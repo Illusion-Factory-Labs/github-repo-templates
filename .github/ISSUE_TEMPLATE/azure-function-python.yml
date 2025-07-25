@@ -1,0 +1,94 @@
+name: "Azure Python Function App Repository Template"
+description: "A template for creating Azure Python Function Apps"
+title: "Azure Function Python App Template"
+labels: ["azure", "python", "function-app"]
+assignees: [
+  - ${{github.author}}
+]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Welcome to the Azure Python Function App Template!
+        
+        This template is designed to help you quickly set up a new GitHub Repository for Azure Function App using Python. Please fill out the following details to get started.
+
+  - type: input
+    id: function_name
+    attributes:
+      label: "Function Name"
+      description: "Enter the name of your Azure Function."
+      placeholder: "FunctionName"
+    validations:
+      required: true
+
+  - type: input
+    id: resource_group
+    attributes:
+      label: "Resource Group"
+      description: "Enter the name of the Azure Resource Group where the Function App will be deployed."
+      placeholder: "FunctionResourceGroup"
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: "Location"
+      description: "Enter the Azure region where you want to deploy your Function App."
+      placeholder: "Brazil South, East US, etc."
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: "Additional Information"
+      description: "Any additional information or requirements for your Function App."
+      placeholder: "e.g., specific libraries, configurations, etc."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: privacy_level
+    attributes:
+      label: ">>Privacy Level<<"
+      description: "Select the privacy level for your Function App."
+      options:
+        - label: "Public"
+          value: "public"
+        - label: "Private"
+          value: "private"
+        - label: "Internal"
+          value: "internal"
+    validations:
+      required: true
+
+  - type: input
+    id: subscription_dev_id
+    attributes:
+      label: ">>Develop Subscription ID<<"
+      description: "Enter the Azure Subscription ID for development purposes."
+      placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    validations:
+      required: true
+      pattern: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  - type: input
+    id: subscription_hom_id
+    attributes:
+      label: ">>Homolog Subscription ID<<"
+      description: "Enter the Azure Subscription ID for homolog purposes."
+      placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    validations:
+      required: true
+      pattern: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+  - type: input
+    id: subscription_prod_id
+    attributes:
+      label: ">>Production Subscription ID<<"
+      description: "Enter the Azure Subscription ID for production purposes."
+      placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    validations:
+      required: true
+      pattern: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
