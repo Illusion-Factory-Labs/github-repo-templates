@@ -1,0 +1,27 @@
+name: Workflow 01
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  SERVER: Production
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test-variables:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Environment Variable
+        run: |
+          echo "The server is set to $SERVER"
+          env
+      - name: Use Action to Import Variables
+        uses: ./.github/actions/action-01

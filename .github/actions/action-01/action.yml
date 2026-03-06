@@ -1,0 +1,9 @@
+name: Variables
+description: Import variables
+runs:
+  using: "composite"
+  steps:
+    - name: Set Greeting
+      run:
+        echo $SERVER
+      shell: bash
