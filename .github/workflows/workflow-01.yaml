@@ -23,5 +23,9 @@ jobs:
         run: |
           echo "The server is set to $SERVER"
           env
+
+      - name: Dump GitHub context
+        run: echo "${{ toJson(github) }}"
+
       - name: Use Action to Import Variables
         uses: ./.github/actions/action-01
