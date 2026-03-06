@@ -25,4 +25,4 @@ jobs:
           env
 
       - name: Use Action to Import Variables
-        uses: https://github.com/Illusion-Factory-Labs/github-repo-templates/.github/actions/action-01
+        uses: Illusion-Factory-Labs/github-repo-templates/.github/actions/action-01@main
