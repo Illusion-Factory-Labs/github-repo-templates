@@ -34,9 +34,8 @@ jobs:
             -H "Accept: application/vnd.github+json" | jq '.environments[].name'
       
       - name: Create variables
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
+          echo "${{ secrets.GH_PAT }}" | gh auth login --with-token
           gh variable set API_URL \
           --repo ${{ github.repository }} \
           --env ${{ matrix.AMBIENTE }} \
