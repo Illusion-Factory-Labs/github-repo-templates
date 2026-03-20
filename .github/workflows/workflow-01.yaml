@@ -34,7 +34,6 @@ jobs:
             -H "Accept: application/vnd.github+json" | jq '.environments[].name'
       
       - name: Create variables
-        needs: print-env
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
