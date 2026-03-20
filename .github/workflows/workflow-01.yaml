@@ -33,6 +33,4 @@ jobs:
             echo "$var"
           done
 
-          for var in ${{ github }}; do
-            echo "$var"
-          done
+          echo $GITHUB_REF
