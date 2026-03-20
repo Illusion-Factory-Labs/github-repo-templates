@@ -18,19 +18,12 @@ defaults:
 jobs:
   test-variables:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        AMBIENTE: [prd, des, des-vars]
+    # strategy:
+    #   matrix:
+    #     AMBIENTE: [prd, des, des-vars]
     # environment:
     #   name: ${{ matrix.AMBIENTE }}
     steps:
       - name: Print Environment Variable
         run: |
-          echo "The current environment is: ${{ matrix.AMBIENTE }}"
-          echo "The environment variables are: "
-          
-          for var in ${{ vars }}; do
-            echo "$var"
-          done
-
-          echo $GITHUB_REF
+          echo $GITHUB_REPOSITORY
