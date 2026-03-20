@@ -29,5 +29,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo $GITHUB_REPOSITORY
-          gh api https://api.github.com/repos/${{ github.repository }}/environments
+          gh api "https://api.github.com/repos/${{ github.repository }}/environments" \
             -H "Accept: application/vnd.github+json" | jq '.environments[].name'
