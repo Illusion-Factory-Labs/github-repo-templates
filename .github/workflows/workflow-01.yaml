@@ -18,11 +18,14 @@ defaults:
 jobs:
   test-variables:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        AMBIENTE: [prd, des, des-vars]
+    environment:
+      name: ${{ matrix.AMBIENTE }}
     steps:
       - name: Print Environment Variable
         run: |
-          echo "The server is set to $SERVER"
-          env
-
-      - name: Use Action to Import Variables
-        uses: Illusion-Factory-Labs/github-repo-templates/.github/actions/action-01@main
+          echo "The current environment is: ${{ matrix.AMBIENTE }}"
+          echo "The environment variables are: "
+          echo "${{ vars }}"
