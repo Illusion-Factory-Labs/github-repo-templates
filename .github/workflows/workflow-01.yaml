@@ -37,7 +37,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh variable set API_URL \
-            --env ${{ matrix.AMBIENTE }} \
-            --body "https://api.${{ matrix.AMBIENTE }}.example.com"
-          gh variable list --env ${{ matrix.AMBIENTE }} | grep API_URL
+          gh variable set API_URL --env ${{ matrix.AMBIENTE }} --body "https://api.${{ matrix.AMBIENTE }}.example.com" --repo repos/${{ github.repository }}
