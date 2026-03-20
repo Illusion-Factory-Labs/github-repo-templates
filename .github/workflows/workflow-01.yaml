@@ -21,11 +21,18 @@ jobs:
     strategy:
       matrix:
         AMBIENTE: [prd, des, des-vars]
-    environment:
-      name: ${{ matrix.AMBIENTE }}
+    # environment:
+    #   name: ${{ matrix.AMBIENTE }}
     steps:
       - name: Print Environment Variable
         run: |
           echo "The current environment is: ${{ matrix.AMBIENTE }}"
           echo "The environment variables are: "
-          echo "${{ vars }}"
+          
+          for var in ${{ vars }}; do
+            echo "$var"
+          done
+
+          for var in ${{ github }}; do
+            echo "$var"
+          done

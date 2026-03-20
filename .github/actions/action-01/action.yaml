@@ -5,5 +5,7 @@ runs:
   steps:
     - name: Set Greeting
       run:
-        echo $SERVER
+        gh variable set API_URL \
+          --env prd \
+          --body "https://api.prod.example.com"
       shell: bash
