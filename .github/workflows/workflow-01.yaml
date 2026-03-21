@@ -33,7 +33,7 @@ jobs:
           # gh api "https://api.github.com/repos/${{ github.repository }}/environments" \
           #   -H "Accept: application/vnd.github+json" | jq '.environments[].name'
 
-          echo "${{ toJson(vars) }}"
+          echo "${{ vars }}"
       
       # - name: Create variables
       #   run: |
