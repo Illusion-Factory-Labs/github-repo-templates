@@ -16,9 +16,9 @@ runs:
     - name: Checkout Global Vars Files
       uses: actions/checkout@v5
       with:
-        repository: Illusion-Factory-Labs/github-repo-variables
+        repository: Illusion-Factory-Labs/${{ env.GLOBAL_REPO_VAR }}
         ref: main
-        path: github-repo-variables
+        path: ${{ env.GLOBAL_REPO_VAR }}
         token: ${{ env.GH_PAT }}
         clean: true
 
@@ -28,15 +28,15 @@ runs:
         service_vars_file="vg_api_service_global.json"
         
         for varsfile in "$infra_vars_file" "$service_vars_file"; do
-          if [ ! -f ./github-repo-variables/${AMBIENTE}/$varsfile ]; then
-            echo "Arquivo não encontrado: ./github-repo-variables/${AMBIENTE}/$varsfile" >&2
+          if [ ! -f ./$GLOBAL_REPO_VAR/${AMBIENTE}/$varsfile ]; then
+            echo "Arquivo não encontrado: ./$GLOBAL_REPO_VAR/${AMBIENTE}/$varsfile" >&2
             exit 1
           fi
         done
 
         vars_file=$(jq -s -c 'add' \
-          ./github-repo-variables/${AMBIENTE}/$infra_vars_file \
-          ./github-repo-variables/${AMBIENTE}/$service_vars_file \
+          ./$GLOBAL_REPO_VAR/${AMBIENTE}/$infra_vars_file \
+          ./$GLOBAL_REPO_VAR/${AMBIENTE}/$service_vars_file \
           | envsubst)
         echo "$vars_file"
         echo "VARS_FILE=$vars_file" >> $GITHUB_OUTPUT

@@ -10,6 +10,8 @@ permissions:
 
 env:
   SERVER: Production
+  GLOBAL_REPO_VAR: github-repo-variables
+  GH_PAT: ${{ secrets.GH_PAT }}
 
 defaults:
   run:
