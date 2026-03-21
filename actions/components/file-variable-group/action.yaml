@@ -32,19 +32,19 @@ runs:
         service_vars_file="vg_api_service_global.json"
         
         for varsfile in "$infra_vars_file" "$service_vars_file"; do
-          if [ ! -f ./$GLOBAL_REPO_VAR/${AMBIENTE}/$varsfile ]; then
-            echo "Arquivo não encontrado: ./$GLOBAL_REPO_VAR/${AMBIENTE}/$varsfile" >&2
+          if [ ! -f ./$GLOBAL_REPO_VAR/${{ inputs.AMBIENTE }}/$varsfile ]; then
+            echo "Arquivo não encontrado: ./$GLOBAL_REPO_VAR/${{ inputs.AMBIENTE }}/$varsfile" >&2
             exit 1
           fi
         done
 
         vars_file=$(jq -s -c 'add' \
-          ./$GLOBAL_REPO_VAR/${AMBIENTE}/$infra_vars_file \
-          ./$GLOBAL_REPO_VAR/${AMBIENTE}/$service_vars_file \
+          ./$GLOBAL_REPO_VAR/${{ inputs.AMBIENTE }}/$infra_vars_file \
+          ./$GLOBAL_REPO_VAR/${{ inputs.AMBIENTE }}/$service_vars_file \
           | envsubst)
         echo "$vars_file"
         echo "VARS_FILE=$vars_file" >> $GITHUB_OUTPUT
-        echo "::notice title=📝 VARIÁVEIS EXPORTADAS::Arquivo de variáveis globais exportado com sucesso para $AMBIENTE."
+        echo "::notice title=📝 VARIÁVEIS EXPORTADAS::Arquivo de variáveis globais exportado com sucesso para ${{ inputs.AMBIENTE }}."
       id: set-vars-file
 
       shell: bash
