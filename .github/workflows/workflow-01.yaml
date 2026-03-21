@@ -29,14 +29,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo $GITHUB_REPOSITORY
-          gh api "https://api.github.com/repos/${{ github.repository }}/environments" \
-            -H "Accept: application/vnd.github+json" | jq '.environments[].name'
+          # echo $GITHUB_REPOSITORY
+          # gh api "https://api.github.com/repos/${{ github.repository }}/environments" \
+          #   -H "Accept: application/vnd.github+json" | jq '.environments[].name'
+
+          echo "${{ toJson(vars) }}"
       
-      - name: Create variables
-        run: |
-          echo "${{ secrets.GH_PAT }}" | gh auth login --with-token
-          gh variable set API_URL \
-          --repo ${{ github.repository }} \
-          --env ${{ matrix.AMBIENTE }} \
-          --body "https://api.${{ matrix.AMBIENTE }}.example.com"
+      # - name: Create variables
+      #   run: |
+      #     echo "${{ secrets.GH_PAT }}" | gh auth login --with-token
+      #     gh variable set API_URL \
+      #     --repo ${{ github.repository }} \
+      #     --env ${{ matrix.AMBIENTE }} \
+      #     --body "https://api.${{ matrix.AMBIENTE }}.example.com"
