@@ -20,20 +20,29 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        AMBIENTE: [prd, des, des-vars, prd-vars, criei-agora]
+        AMBIENTE: [prd, des, tqs, qa]
     environment:
       name: ${{ matrix.AMBIENTE }}
     steps:
+      - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
+        id: file-variable-group
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/components/file-variable-group@main
+      
       - name: Print Environment Variable
         id: print-env
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          # echo $GITHUB_REPOSITORY
-          # gh api "https://api.github.com/repos/${{ github.repository }}/environments" \
-          #   -H "Accept: application/vnd.github+json" | jq '.environments[].name'
+          echo "VARS_FILE: ${{ steps.file-variable-group.outputs.VARS_FILE }}"
+      
+      # - name: Print Environment Variable
+      #   id: print-env
+      #   env:
+      #     GH_TOKEN: ${{ github.token }}
+      #   run: |
+      #     # echo $GITHUB_REPOSITORY
+      #     # gh api "https://api.github.com/repos/${{ github.repository }}/environments" \
+      #     #   -H "Accept: application/vnd.github+json" | jq '.environments[].name'
 
-          echo "${{ vars }}"
+      #     echo "${{ vars }}"
       
       # - name: Create variables
       #   run: |
