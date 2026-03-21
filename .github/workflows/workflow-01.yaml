@@ -24,15 +24,14 @@ jobs:
     environment:
       name: ${{ matrix.AMBIENTE }}
     steps:
-      # - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
-      #   id: file-variable-group
-      #   uses: Illusion-Factory-Labs/github-repo-templates/actions/components/file-variable-group@main
+      - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
+        id: file-variable-group
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/components/file-variable-group@main
       
       - name: Print Environment Variable
         id: print-env
         run: |
-          # echo "VARS_FILE: ${{ steps.file-variable-group.outputs.VARS_FILE }}"
-          echo ${{ env.GLOBAL_REPO_VAR}}
+          echo "VARS_FILE: ${{ steps.file-variable-group.outputs.VARS_FILE }}"
       
       # - name: Print Environment Variable
       #   id: print-env
