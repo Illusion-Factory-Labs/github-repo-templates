@@ -23,12 +23,13 @@ jobs:
     strategy:
       matrix:
         AMBIENTE: [prd, des, tqs, qa]
-    environment:
-      name: ${{ matrix.AMBIENTE }}
+    environment: ${{ matrix.AMBIENTE }}
     steps:
       - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
         id: file-variable-group
         uses: Illusion-Factory-Labs/github-repo-templates/actions/components/file-variable-group@main
+        with:
+          AMBIENTE: ${{ matrix.AMBIENTE }}
       
       - name: Print Environment Variable
         id: print-env

@@ -1,6 +1,10 @@
 name: Environment Variables File (Arquivo de variáveis globais)
 description: "Exporta variáveis globais de git files para qualquer Service/API/MFE/RN/Lib .NET/JS"
 
+inputs:
+  AMBIENTE:
+    description: "Ambiente para o qual as variáveis globais serão exportadas (prd, des, tqs, qa)"
+    required: true
 outputs:
   VARS_FILE:
     description: "Variáveis globais de git files para Services API .NET"
