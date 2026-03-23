@@ -17,41 +17,32 @@ runs:
       env:
         GH_TOKEN: ${{ env.GHTOKEN }}
       run: |
-          set -euo pipefail
+        set -euo pipefail
 
-          if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "GH_TOKEN is empty. GitHub App token was not exported."
-            exit 1
-          fi
 
-          REPO="${{ github.repository }}"
-          SOURCE_API_ENDPOINT="repos/$REPO/environments/${{ inputs.SOURCE_ENVIRONMENT }}/variables"
-          DEST_API_ENDPOINT="repos/$REPO/environments/${{ inputs.DESTINATION_ENVIRONMENT }}/variables"
+        if [[ "${{ inputs.SOURCE_ENVIRONMENT }}" != "prd" && "${{ inputs.SOURCE_ENVIRONMENT }}" != "tqs" ]]; then
+            echo "No need to run script for environment: ${{ inputs.SOURCE_ENVIRONMENT }}. Script will only run if values are 'prd' or 'tqs'."
+          exit 0
+        fi
 
-          response="$(gh api "$SOURCE_API_ENDPOINT")"
-          dest_response="$(gh api "$DEST_API_ENDPOINT")"
+        response="$(gh api repos/${{ github.repository }}/environments/${{ inputs.SOURCE_ENVIRONMENT }}/variables)"
 
-          declare -A DEST_VAR_NAMES=()
-          while read -r existing_name; do
-            [[ -z "$existing_name" ]] && continue
-            DEST_VAR_NAMES["$existing_name"]=1
-          done < <(jq -r '(.variables // [])[].name' <<< "$dest_response")
+        if [[ "$(jq -r '(.variables // []) | length' <<< "$response")" -eq 0 ]]; then
+          echo "No variables found for environment: ${{ inputs.SOURCE_ENVIRONMENT }}"
+          exit 0
+        fi
 
-          if [[ "$(jq -r '(.variables // []) | length' <<< "$response")" -eq 0 ]]; then
-              echo "No variables found for environment: ${{ inputs.SOURCE_ENVIRONMENT }}"
-              exit 0
-          fi
+        jq -c '(.variables // [])[]' <<< "$response" | while read -r var; do
+            name=$(echo "$var" | jq -r '.name')
+            value=$(echo "$var" | jq -r '.value')
+            
 
-          jq -c '(.variables // [])[]' <<< "$response" | while read -r var;
-          do
-              name=$(echo "$var" | jq -r '.name')
-              value=$(echo "$var" | jq -r '.value')
+            if gh api repos/${{ github.repository }}/environments/${{ inputs.DESTINATION_ENVIRONMENT }}/variables/$name >/dev/null 2>&1; then
+                echo "'$name' variable already exists. Skipping creation for '$name'."
+            else
+                echo "Creating variable '$name' in environment '${{ inputs.DESTINATION_ENVIRONMENT }}'."
+                gh api --method POST -H 'Accept: application/vnd.github+json' "repos/${{ github.repository }}/environments/${{ inputs.DESTINATION_ENVIRONMENT }}/variables" -f name="$name" -f value="$value"
+            fi
+        done
 
-              if [[ -n "${DEST_VAR_NAMES[$name]:-}" ]]; then
-                echo "Skipping variable '$name' because it already exists in '${{ inputs.DESTINATION_ENVIRONMENT }}'."
-                continue
-              fi
-              
-              gh api --method POST -H 'Accept: application/vnd.github+json' "$DEST_API_ENDPOINT" -f name="$name" -f value="$value"
-              DEST_VAR_NAMES["$name"]=1
-          done
+        echo "Variable copy process completed."
