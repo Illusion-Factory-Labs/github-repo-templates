@@ -1,50 +1,39 @@
-name: Environment Variables File (Arquivo de variáveis globais)
-description: "Exporta variáveis globais de git files para qualquer Service/API/MFE/RN/Lib .NET/JS"
+name: Copy GitHub Environment Variables
+description: "Copy variables from one GitHub environment to another using GitHub CLI"
 
 inputs:
-  AMBIENTE:
-    description: "Ambiente para o qual as variáveis globais serão exportadas (prd, des, tqs, qa)"
+  SOURCE_ENVIRONMENT:
+    description: "The name of the source GitHub environment to copy variables from."
     required: true
-outputs:
-  VARS_FILE:
-    description: "Variáveis globais de git files para Services API .NET"
-    value: ${{ steps.set-vars-file.outputs.VARS_FILE }}
+  DESTINATION_ENVIRONMENT:
+    description: "The name of the destination GitHub environment to copy variables to."
+    required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Install envsubst
-      run: sudo apt-get update && sudo apt-get install -y gettext-base
+    - name: Copy GitHub Environment Variables
       shell: bash
-
-    - name: Checkout Global Vars Files
-      uses: actions/checkout@v5
-      with:
-        repository: Illusion-Factory-Labs/${{ env.GLOBAL_REPO_VAR }}
-        ref: main
-        path: ${{ env.GLOBAL_REPO_VAR }}
-        token: ${{ env.GH_PAT }}
-        clean: true
-
-    - name: Set project variables file by project type/group
+      env:
+        GH_TOKEN: ${{ env.GHTOKEN }}
       run: |
-        infra_vars_file="vg_api_infra_global.json"
-        service_vars_file="vg_api_service_global.json"
-        
-        for varsfile in "$infra_vars_file" "$service_vars_file"; do
-          if [ ! -f ./$GLOBAL_REPO_VAR/${{ inputs.AMBIENTE }}/$varsfile ]; then
-            echo "Arquivo não encontrado: ./$GLOBAL_REPO_VAR/${{ inputs.AMBIENTE }}/$varsfile" >&2
-            exit 1
-          fi
+        # Check if source environment exists
+        if ! gh api repos/${{ github.repository }}/environments --jq '.environments[].name' | grep -Fxq -- "${{ inputs.SOURCE_ENVIRONMENT }}"; then
+          echo "Source environment '${{ inputs.SOURCE_ENVIRONMENT }}' does not exist."
+          exit 1
+        fi
+
+        # Check if destination environment exists, if not create it
+        if ! gh api repos/${{ github.repository }}/environments --jq '.environments[].name' | grep -Fxq -- "${{ inputs.DESTINATION_ENVIRONMENT }}"; then
+          echo "Destination environment '${{ inputs.DESTINATION_ENVIRONMENT }}' does not exist. Creating it..."
+          gh api repos/${{ github.repository }}/environments -f name="${{ inputs.DESTINATION_ENVIRONMENT }}"
+        fi
+
+        # Get variables from source environment and copy to destination environment
+        variables=$(gh variable list --repo ${{ github.repository }} --env ${{ inputs.SOURCE_ENVIRONMENT }} --visibility all --json name,value)
+        echo "$variables" | jq -c '.[]' | while read variable; do
+          name=$(echo "$variable" | jq -r '.name')
+          value=$(echo "$variable" | jq -r '.value')
+          echo "Copying variable '$name' to environment '${{ inputs.DESTINATION_ENVIRONMENT }}'"
+          gh variable set "$name" --repo ${{ github.repository }} --env ${{ inputs.DESTINATION_ENVIRONMENT }} --body "$value"
         done
-
-        vars_file=$(jq -s -c 'add' \
-          ./$GLOBAL_REPO_VAR/${{ inputs.AMBIENTE }}/$infra_vars_file \
-          ./$GLOBAL_REPO_VAR/${{ inputs.AMBIENTE }}/$service_vars_file \
-          | envsubst)
-        echo "$vars_file"
-        echo "VARS_FILE=$vars_file" >> $GITHUB_OUTPUT
-        echo "::notice title=📝 VARIÁVEIS EXPORTADAS::Arquivo de variáveis globais exportado com sucesso para ${{ inputs.AMBIENTE }}."
-      id: set-vars-file
-
-      shell: bash

@@ -1,17 +1,17 @@
 name: Workflow 01
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
-  SERVER: Production
   GLOBAL_REPO_VAR: github-repo-variables
   GH_PAT: ${{ secrets.GH_PAT }}
+  WF_APP_ID: ${{ secrets.WF_APP_ID }}
+  WF_APP_PRIVATE_KEY: ${{ secrets.WF_APP_PRIVATE_KEY }}
+  GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 defaults:
   run:
@@ -20,37 +20,15 @@ defaults:
 jobs:
   test-variables:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        AMBIENTE: [prd, des, tqs, qa]
-    environment: ${{ matrix.AMBIENTE }}
-    steps:
-      - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
-        id: file-variable-group
-        uses: Illusion-Factory-Labs/github-repo-templates/actions/components/file-variable-group@main
-        with:
-          AMBIENTE: ${{ matrix.AMBIENTE }}
+    # strategy:
+    #   matrix:
+    #     AMBIENTE: [prd, des, tqs, qa]
+    # environment: ${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || matrix.AMBIENTE == 'tqs' && 'tqs-vars' || matrix.AMBIENTE }}
+    # steps:
+    #   - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
+    #     id: file-variable-group
+    #     uses: Illusion-Factory-Labs/github-repo-templates/actions/components/file-variable-group@main
+    #     with:
+    #       AMBIENTE: ${{ matrix.AMBIENTE }}
       
-      - name: Print Environment Variable
-        id: print-env
-        run: |
-          echo "VARS_FILE: ${{ steps.file-variable-group.outputs.VARS_FILE }}"
       
-      # - name: Print Environment Variable
-      #   id: print-env
-      #   env:
-      #     GH_TOKEN: ${{ github.token }}
-      #   run: |
-      #     # echo $GITHUB_REPOSITORY
-      #     # gh api "https://api.github.com/repos/${{ github.repository }}/environments" \
-      #     #   -H "Accept: application/vnd.github+json" | jq '.environments[].name'
-
-      #     echo "${{ vars }}"
-      
-      # - name: Create variables
-      #   run: |
-      #     echo "${{ secrets.GH_PAT }}" | gh auth login --with-token
-      #     gh variable set API_URL \
-      #     --repo ${{ github.repository }} \
-      #     --env ${{ matrix.AMBIENTE }} \
-      #     --body "https://api.${{ matrix.AMBIENTE }}.example.com"
