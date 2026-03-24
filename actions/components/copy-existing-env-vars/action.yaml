@@ -16,58 +16,45 @@ inputs:
 runs:
   using: "composite"
   steps:
-
-  - name: Check input list
+  - name: Copy existing GitHub Environment Variables
     shell: bash
+    env:
+      GH_TOKEN: ${{ env.GHTOKEN }}
     run: |
-      set -euo pipefail
+        set -euo pipefail
 
-      VARS='${{ inputs.VARIABLES }}'
+        if [[ "${{ inputs.SOURCE_ENVIRONMENT }}" != "prd" && "${{ inputs.SOURCE_ENVIRONMENT }}" != "tqs" ]]; then
+            echo "⚠️ No need to run script for environment: ${{ inputs.SOURCE_ENVIRONMENT }}. Script will only run if values are 'prd' or 'tqs'."
+          exit 0
+        fi
 
-      # Check if empty array
-      if [[ "$VARS" == "[]" || -z "$VARS" ]]; then
-        echo "::notice::No variables provided"
-        exit 0
-      fi
+        response="$(gh api repos/${{ github.repository }}/environments/${{ inputs.SOURCE_ENVIRONMENT }}/variables)"
 
-      echo "Variables provided:"
-      echo "$VARS" | jq -r '.[]' | while read -r var; do
-        echo " - $var"
-      done
+        if [[ "$(jq -r '(.variables // []) | length' <<< "$response")" -eq 0 ]]; then
+          echo "⚠️ No variables found for environment: ${{ inputs.SOURCE_ENVIRONMENT }}"
+          exit 0
+        fi
 
-  # - name: Copy GitHub Environment Variables
-  #   shell: bash
-  #   env:
-  #     GH_TOKEN: ${{ env.GHTOKEN }}
-  #   run: |
-  #       set -euo pipefail
+        jq -c '(.variables // [])[]' <<< "$response" | while read -r var; do
+          if [[ ${{ inputs.VARIABLES }} == "[]" || -z "${{ inputs.VARIABLES }}" ]]; then
+            name=$(echo "$var" | jq -r '.name')
+          else
+            echo "${{ inputs.VARIABLES }}" | jq -r '.[]' | while read -r var_name; do
+              name="$var_name"
+            done
+          fi
 
-  #       if [[ "${{ inputs.SOURCE_ENVIRONMENT }}" != "prd" && "${{ inputs.SOURCE_ENVIRONMENT }}" != "tqs" ]]; then
-  #           echo "⚠️ No need to run script for environment: ${{ inputs.SOURCE_ENVIRONMENT }}. Script will only run if values are 'prd' or 'tqs'."
-  #         exit 0
-  #       fi
+          value=$(echo "$var" | jq -r '.value')
+            if gh api repos/${{ github.repository }}/environments/${{ inputs.SOURCE_ENVIRONMENT }}/variables/$name >/dev/null 2>&1; then
+              if gh api repos/${{ github.repository }}/environments/${{ inputs.DESTINATION_ENVIRONMENT }}/variables/$name >/dev/null 2>&1; then
+                echo "⚠️ '$name' variable already exists. Skipping copy of '$name'."
+              else
+                echo "ℹ️ Copying variable '$name' from environment '${{ inputs.SOURCE_ENVIRONMENT }}' to environment '${{ inputs.DESTINATION_ENVIRONMENT }}'."
+                gh api --method POST -H 'Accept: application/vnd.github+json' "repos/${{ github.repository }}/environments/${{ inputs.DESTINATION_ENVIRONMENT }}/variables" -f name="$name" -f value="$value"
+              fi
+            else
+              echo "⚠️ '$name' variable does not exist in environment '${{ inputs.SOURCE_ENVIRONMENT }}'. Skipping."
+            fi
+        done
 
-  #       response="$(gh api repos/${{ github.repository }}/environments/${{ inputs.SOURCE_ENVIRONMENT }}/variables)"
-
-  #       if [[ "$(jq -r '(.variables // []) | length' <<< "$response")" -eq 0 ]]; then
-  #         echo "⚠️ No variables found for environment: ${{ inputs.SOURCE_ENVIRONMENT }}"
-  #         exit 0
-  #       fi
-
-  #       jq -c '(.variables // [])[]' <<< "$response" | while read -r var; do
-  #         name=$(echo "$var" | jq -r '.name')
-  #         value=$(echo "$var" | jq -r '.value')
-
-  #         if [[ ${{ inputs.VARIABLES }} == "[]" || -z "${{ inputs.VARIABLES }}" ]]; then
-  #           if gh api repos/${{ github.repository }}/environments/${{ inputs.DESTINATION_ENVIRONMENT }}/variables/$name >/dev/null 2>&1; then
-  #             echo "⚠️ '$name' variable already exists. Skipping copy of '$name'."
-  #           else
-  #             echo "ℹ️ Copying variable '$name' from environment '${{ inputs.SOURCE_ENVIRONMENT }}' to environment '${{ inputs.DESTINATION_ENVIRONMENT }}'."
-  #             gh api --method POST -H 'Accept: application/vnd.github+json' "repos/${{ github.repository }}/environments/${{ inputs.DESTINATION_ENVIRONMENT }}/variables" -f name="$name" -f value="$value"
-  #           fi
-  #         else
-  #           echo ${{ inputs.VARIABLES }} | grep -wq "$name"
-  #         fi
-  #       done
-
-  #       echo "✅ Repository environment variables copy process completed."
+        echo "✅ Repository environment variables copy process completed."
