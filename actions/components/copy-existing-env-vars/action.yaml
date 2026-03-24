@@ -2,17 +2,17 @@ name: Copy GitHub repository environment variables
 description: "Copy variables from one GitHub repository environment to another using GitHub CLI."
 
 inputs:
-  DRY_RUN:
+  dry_run:
     description: "Dry-run mode flag (mainly used for testing). Use '1' to only log actions, or '0' to apply changes."
     required: false
     default: "0"
-  SOURCE_ENVIRONMENT:
+  source_environment:
     description: "The name of the source GitHub repository environment to copy variables from."
     required: true
-  DESTINATION_ENVIRONMENT:
+  destination_environment:
     description: "The name of the destination GitHub repository environment to copy variables to."
     required: true
-  VARIABLES:
+  variables:
     description: "Optional list of source variable names to copy. Accepted formats: JSON array (e.g. [\"VAR_A\",\"VAR_B\"]) or comma-separated string (e.g. VAR_A,VAR_B). Use [] or empty to copy all source variables."
     required: false
     default: "[]"
@@ -28,18 +28,18 @@ runs:
       set -euo pipefail
 
       # Read action inputs.
-      DRY_RUN_RAW="${{ inputs.DRY_RUN }}"
-      SRC_ENV="${{ inputs.SOURCE_ENVIRONMENT }}"
-      DEST_ENV="${{ inputs.DESTINATION_ENVIRONMENT }}"
-      VARS_TO_COPY='${{ inputs.VARIABLES }}'
+      DRY_RUN_RAW="${{ inputs.dry_run }}"
+      SRC_ENV="${{ inputs.source_environment }}"
+      DEST_ENV="${{ inputs.destination_environment }}"
+      VARS_TO_COPY='${{ inputs.variables }}'
 
       if [[ "$DRY_RUN_RAW" != "0" && "$DRY_RUN_RAW" != "1" ]]; then
-        echo "❌ Invalid DRY_RUN value: '$DRY_RUN_RAW'. Use '0' or '1'."
+        echo "❌ Invalid 'dry_run' value: '$DRY_RUN_RAW'. Use '0' or '1'."
         exit 1
       fi
 
       if [[ "$DRY_RUN_RAW" == "1" ]]; then
-        echo "ℹ️ DRY_RUN enabled. No variables will be created or modified."
+        echo "ℹ️ 'dry_run' enabled. No variables will be created or modified."
       fi
 
       # Fetch all variables from the source environment.
