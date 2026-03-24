@@ -21,39 +21,61 @@ runs:
     env:
       GH_TOKEN: ${{ env.GHTOKEN }}
     run: |
-        set -euo pipefail
+      set -euo pipefail
 
-        SRC_ENV="${{ inputs.SOURCE_ENVIRONMENT }}"
-        DEST_ENV="${{ inputs.DESTINATION_ENVIRONMENT }}"
-        VARS_TO_COPY="${{ inputs.VARIABLES }}"
+      SRC_ENV="${{ inputs.SOURCE_ENVIRONMENT }}"
+      DEST_ENV="${{ inputs.DESTINATION_ENVIRONMENT }}"
+      VARS_TO_COPY='${{ inputs.VARIABLES }}'
 
-        response="$(gh api repos/${{ github.repository }}/environments/$SRC_ENV/variables)"
+      response="$(gh api "repos/${{ github.repository }}/environments/$SRC_ENV/variables")"
+      if ! jq -e . >/dev/null 2>&1 <<< "$response"; then
+        echo "Failed to parse source variables response as JSON."
+        echo "$response"
+        exit 1
+      fi
 
-        if [[ "$(jq -r '(.variables // []) | length' <<< "$response")" -eq 0 ]]; then
-          echo "⚠️ No variables found for environment: $SRC_ENV. Nothing to copy."
-          exit 0
+      if [[ "$(jq -r '(.variables // []) | length' <<< "$response")" -eq 0 ]]; then
+        echo "No variables found for environment: $SRC_ENV. Nothing to copy."
+        exit 0
+      fi
+
+      declare -A SOURCE_VARS=()
+      while IFS=$'\t' read -r name value; do
+        SOURCE_VARS["$name"]="$value"
+      done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$response")
+
+      declare -a NAMES_TO_COPY=()
+      if [[ -z "$VARS_TO_COPY" || "$VARS_TO_COPY" == "[]" ]]; then
+        for name in "${!SOURCE_VARS[@]}"; do
+          NAMES_TO_COPY+=("$name")
+        done
+      elif jq -e . >/dev/null 2>&1 <<< "$VARS_TO_COPY" && jq -e 'type == "array"' >/dev/null 2>&1 <<< "$VARS_TO_COPY"; then
+        while read -r name; do
+          [[ -z "$name" ]] && continue
+          NAMES_TO_COPY+=("$name")
+        done < <(jq -r '.[]' <<< "$VARS_TO_COPY")
+      else
+        while IFS= read -r name; do
+          name="${name## }"
+          name="${name%% }"
+          [[ -z "$name" ]] && continue
+          NAMES_TO_COPY+=("$name")
+        done < <(tr ',' '\n' <<< "$VARS_TO_COPY")
+      fi
+
+      for name in "${NAMES_TO_COPY[@]}"; do
+        if [[ -z "${SOURCE_VARS[$name]+x}" ]]; then
+          echo "'$name' does not exist in source environment '$SRC_ENV'. Skipping."
+          continue
         fi
 
-        jq -c '(.variables // [])[]' <<< "$response" | while read -r var; do
-          if [[ "$VARS_TO_COPY" == "[]" || -z "$VARS_TO_COPY" ]]; then
-            name=$(echo "$var" | jq -r '.name')
-          else
-            echo "$VARS_TO_COPY" | jq -r '.[]' | while read -r var_name; do
-              name="$var_name"
-            done
-          fi
+        value="${SOURCE_VARS[$name]}"
+        if gh api "repos/${{ github.repository }}/environments/$DEST_ENV/variables/$name" >/dev/null 2>&1; then
+          echo "'$name' already exists in '$DEST_ENV'. Skipping."
+        else
+          echo "Copying '$name' from '$SRC_ENV' to '$DEST_ENV'."
+          gh api --method POST -H 'Accept: application/vnd.github+json' "repos/${{ github.repository }}/environments/$DEST_ENV/variables" -f name="$name" -f value="$value"
+        fi
+      done
 
-          value=$(echo "$var" | jq -r '.value')
-            if gh api repos/${{ github.repository }}/environments/$SRC_ENV/variables/$name >/dev/null 2>&1; then
-              if gh api repos/${{ github.repository }}/environments/$DEST_ENV/variables/$name >/dev/null 2>&1; then
-                echo "⚠️ '$name' variable already exists. Skipping copy of '$name'."
-              else
-                echo "ℹ️ Copying variable '$name' from environment '$SRC_ENV' to environment '$DEST_ENV'."
-                gh api --method POST -H 'Accept: application/vnd.github+json' "repos/${{ github.repository }}/environments/$DEST_ENV/variables" -f name="$name" -f value="$value"
-              fi
-            else
-              echo "⚠️ '$name' variable does not exist in environment '$SRC_ENV'. Skipping."
-            fi
-        done
-
-        echo "✅ Repository environment variables copy process completed."
+      echo "Repository environment variables copy process completed."
