@@ -1,49 +1,70 @@
-name: Copy GitHub Environment Variables
-description: "Copy variables from one GitHub environment to another using GitHub CLI"
+name: Copy GitHub repository environment variables
+description: "Copy variables from one GitHub repository environment to another using GitHub CLI."
 
 inputs:
+  DRY_RUN:
+    description: "Dry-run mode flag (mainly used for testing). Use '1' to only log actions, or '0' to apply changes."
+    required: false
+    default: "0"
   SOURCE_ENVIRONMENT:
-    description: "The name of the source GitHub environment to copy variables from."
+    description: "The name of the source GitHub repository environment to copy variables from."
     required: true
   DESTINATION_ENVIRONMENT:
-    description: "The name of the destination GitHub environment to copy variables to."
+    description: "The name of the destination GitHub repository environment to copy variables to."
     required: true
   VARIABLES:
-    description: "A comma-separated list of specific existing variable names to copy. If not provided, all variables will be copied."
+    description: "Optional list of source variable names to copy. Accepted formats: JSON array (e.g. [\"VAR_A\",\"VAR_B\"]) or comma-separated string (e.g. VAR_A,VAR_B). Use [] or empty to copy all source variables."
     required: false
     default: "[]"
 
 runs:
   using: "composite"
   steps:
-  - name: Copy existing GitHub Environment Variables
+  - name: Copy existing GitHub repository environment variables
     shell: bash
     env:
       GH_TOKEN: ${{ env.GHTOKEN }}
     run: |
       set -euo pipefail
 
+      # Read action inputs.
+      DRY_RUN_RAW="${{ inputs.DRY_RUN }}"
       SRC_ENV="${{ inputs.SOURCE_ENVIRONMENT }}"
       DEST_ENV="${{ inputs.DESTINATION_ENVIRONMENT }}"
       VARS_TO_COPY='${{ inputs.VARIABLES }}'
 
+      if [[ "$DRY_RUN_RAW" != "0" && "$DRY_RUN_RAW" != "1" ]]; then
+        echo "❌ Invalid DRY_RUN value: '$DRY_RUN_RAW'. Use '0' or '1'."
+        exit 1
+      fi
+
+      if [[ "$DRY_RUN_RAW" == "1" ]]; then
+        echo "ℹ️ DRY_RUN enabled. No variables will be created or modified."
+      fi
+
+      # Fetch all variables from the source environment.
       response="$(gh api "repos/${{ github.repository }}/environments/$SRC_ENV/variables")"
+      # Fail fast if GitHub API response is not valid JSON.
       if ! jq -e . >/dev/null 2>&1 <<< "$response"; then
-        echo "Failed to parse source variables response as JSON."
+        echo "❌ Failed to parse source variables response as JSON."
         echo "$response"
         exit 1
       fi
 
+      # Nothing to do when the source environment has no variables.
       if [[ "$(jq -r '(.variables // []) | length' <<< "$response")" -eq 0 ]]; then
-        echo "No variables found for environment: $SRC_ENV. Nothing to copy."
+        echo "⚠️ No variables found for environment: $SRC_ENV. Nothing to copy."
         exit 0
       fi
 
+      # Build an in-memory map: SOURCE_VARS[name]=value.
       declare -A SOURCE_VARS=()
       while IFS=$'\t' read -r name value; do
         SOURCE_VARS["$name"]="$value"
       done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$response")
 
+      # Resolve which variable names should be copied.
+      # Supported formats: empty/[] (all), JSON array, or comma-separated list.
       declare -a NAMES_TO_COPY=()
       if [[ -z "$VARS_TO_COPY" || "$VARS_TO_COPY" == "[]" ]]; then
         for name in "${!SOURCE_VARS[@]}"; do
@@ -63,19 +84,24 @@ runs:
         done < <(tr ',' '\n' <<< "$VARS_TO_COPY")
       fi
 
+      # Copy each selected variable if it exists in source and not in destination.
       for name in "${NAMES_TO_COPY[@]}"; do
         if [[ -z "${SOURCE_VARS[$name]+x}" ]]; then
-          echo "'$name' does not exist in source environment '$SRC_ENV'. Skipping."
+          echo "⚠️ '$name' does not exist in source environment '$SRC_ENV'. Skipping."
           continue
         fi
 
         value="${SOURCE_VARS[$name]}"
         if gh api "repos/${{ github.repository }}/environments/$DEST_ENV/variables/$name" >/dev/null 2>&1; then
-          echo "'$name' already exists in '$DEST_ENV'. Skipping."
+          echo "⚠️ '$name' already exists in '$DEST_ENV'. Skipping."
         else
-          echo "Copying '$name' from '$SRC_ENV' to '$DEST_ENV'."
-          gh api --method POST -H 'Accept: application/vnd.github+json' "repos/${{ github.repository }}/environments/$DEST_ENV/variables" -f name="$name" -f value="$value"
+          if [[ "$DRY_RUN_RAW" == "1" ]]; then
+            echo "[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'."
+          else
+            echo "ℹ️ Copying '$name' from '$SRC_ENV' to '$DEST_ENV'."
+            gh api --silent --method POST -H 'Accept: application/vnd.github+json' "repos/${{ github.repository }}/environments/$DEST_ENV/variables" -f name="$name" -f value="$value"
+          fi
         fi
       done
 
-      echo "Repository environment variables copy process completed."
+      echo "✅ Repository environment variables copy process completed."
