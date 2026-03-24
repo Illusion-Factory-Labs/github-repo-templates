@@ -21,14 +21,14 @@ runs:
 
 
         if [[ "${{ inputs.SOURCE_ENVIRONMENT }}" != "prd" && "${{ inputs.SOURCE_ENVIRONMENT }}" != "tqs" ]]; then
-            echo "::notice::No need to run script for environment: ${{ inputs.SOURCE_ENVIRONMENT }}. Script will only run if values are 'prd' or 'tqs'."
+            echo ":warning:No need to run script for environment: ${{ inputs.SOURCE_ENVIRONMENT }}. Script will only run if values are 'prd' or 'tqs'."
           exit 0
         fi
 
         response="$(gh api repos/${{ github.repository }}/environments/${{ inputs.SOURCE_ENVIRONMENT }}/variables)"
 
         if [[ "$(jq -r '(.variables // []) | length' <<< "$response")" -eq 0 ]]; then
-          echo "::notice::No variables found for environment: ${{ inputs.SOURCE_ENVIRONMENT }}"
+          echo ":warning:No variables found for environment: ${{ inputs.SOURCE_ENVIRONMENT }}"
           exit 0
         fi
 
@@ -38,11 +38,11 @@ runs:
             
 
             if gh api repos/${{ github.repository }}/environments/${{ inputs.DESTINATION_ENVIRONMENT }}/variables/$name >/dev/null 2>&1; then
-                echo "::warning::'$name' variable already exists. Skipping copy of '$name'."
+                echo ":warning:'$name' variable already exists. Skipping copy of '$name'."
             else
-                echo "::notice::Copying variable '$name' from environment '${{ inputs.SOURCE_ENVIRONMENT }}' to environment '${{ inputs.DESTINATION_ENVIRONMENT }}'."
+                echo ":information_source:Copying variable '$name' from environment '${{ inputs.SOURCE_ENVIRONMENT }}' to environment '${{ inputs.DESTINATION_ENVIRONMENT }}'."
                 gh api --method POST -H 'Accept: application/vnd.github+json' "repos/${{ github.repository }}/environments/${{ inputs.DESTINATION_ENVIRONMENT }}/variables" -f name="$name" -f value="$value"
             fi
         done
 
-        echo "::notice::Repository environment variables copy process completed."
+        echo ":white_check_mark:Repository environment variables copy process completed."
