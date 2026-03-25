@@ -168,7 +168,7 @@ runs:
           if [[ "$DRY_RUN_RAW" == "1" ]]; then
             echo "[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'."
           else
-            echo "ℹ️ Syncing '$name' from '$SRC_ENV' to '$DEST_ENV'."
+            echo "ℹ️ Creating '$name' from '$SRC_ENV' to '$DEST_ENV'."
             gh api --silent --method POST -H 'Accept: application/vnd.github+json' "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
             echo "✅ Created '$name' and exported to GITHUB_ENV."
