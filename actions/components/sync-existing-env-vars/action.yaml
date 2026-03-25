@@ -1,7 +1,7 @@
 name: Sync GitHub repository environment variables
 description: >-
-  "Copy variables for the same repository from an existing environment to another, creating or updating destination values when needed. 
-  This action is useful for keeping environment variables DRY across multiple environments (e.g. dev, staging, prod) or for copying variables 
+  "Sync variables for the same repository from a source environment to a destination environment, creating or updating destination values when needed. 
+  This action is useful for keeping environment variables DRY across multiple environments (e.g. dev, staging, prod) or for syncing variables 
   to a new environment without needing to re-enter them manually. By default, all variables from the source environment will be synced to destination 
   (including deletion of destination-only variables), but you can also specify a subset of variable names to sync if desired."
 
@@ -15,20 +15,20 @@ inputs:
     required: false
     default: "${{ github.repository }}"
   source_environment:
-    description: "The name of the source GitHub repository environment to copy variables from."
+    description: "The name of the source GitHub repository environment to sync variables from."
     required: true
   destination_environment:
-    description: "The name of the destination GitHub repository environment to copy variables to."
+    description: "The name of the destination GitHub repository environment to sync variables to."
     required: true
   variables:
-    description: "Optional list of source variable names to copy. Accepted formats: JSON array (string) (e.g. '[\"VAR_A\",\"VAR_B\"]') or comma-separated, no space, string (e.g. VAR_A,VAR_B). Use '[]' or empty to copy all source variables."
+    description: "Optional list of source variable names to sync. Accepted formats: JSON array (string) (e.g. '[\"VAR_A\",\"VAR_B\"]') or comma-separated, no space, string (e.g. VAR_A,VAR_B). Use '[]' or empty to sync all source variables."
     required: false
     default: '[]'
 
 runs:
   using: "composite"
   steps:
-  - name: Copy existing GitHub repository environment variables
+  - name: Sync existing GitHub repository environment variables
     shell: bash
     env:
       GH_TOKEN: ${{ env.GHTOKEN }}
@@ -78,7 +78,7 @@ runs:
         DEST_VARS["$name"]="$value"
       done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$dest_list_response")
 
-      # Resolve which variable names should be copied.
+      # Resolve which variable names should be synced.
       # Supported formats: empty/[] (all), JSON array, or comma-separated list.
       declare -a NAMES_TO_COPY=()
       COPY_ALL="0"
@@ -142,7 +142,7 @@ runs:
         } >> "$GITHUB_ENV"
       }
 
-      # Copy each selected variable from source to destination.
+      # Sync each selected variable from source to destination.
       # If destination exists and value differs, update it.
       for name in "${NAMES_TO_COPY[@]}"; do
         if [[ -z "${SOURCE_VARS[$name]+x}" ]]; then
@@ -166,9 +166,9 @@ runs:
           fi
         else
           if [[ "$DRY_RUN_RAW" == "1" ]]; then
-            echo "[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'."
+            echo "[DRY_RUN] Would sync '$name' from '$SRC_ENV' to '$DEST_ENV'."
           else
-            echo "ℹ️ Copying '$name' from '$SRC_ENV' to '$DEST_ENV'."
+            echo "ℹ️ Syncing '$name' from '$SRC_ENV' to '$DEST_ENV'."
             gh api --silent --method POST -H 'Accept: application/vnd.github+json' "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
             echo "✅ Created '$name' and exported to GITHUB_ENV."
@@ -176,4 +176,4 @@ runs:
         fi
       done
 
-      echo "✅ Repository environment variables copy process completed."
+      echo "✅ Repository environment variables sync process completed."
