@@ -25,7 +25,7 @@ inputs:
       'Optional comma of source variable names to sync. Accepted formats: JSON array (e.g. ["VAR_A", "VAR_B"]) or 
       comma-separated, no space, string (e.g. VAR_A,VAR_B). Defaults to empty JSON array, which means sync all source variables.'
     required: false
-    default: []
+    default: '[]'
 
 runs:
   using: "composite"
