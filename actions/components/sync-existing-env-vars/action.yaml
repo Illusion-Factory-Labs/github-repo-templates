@@ -39,10 +39,16 @@ inputs:
     required: false
     default: 'true'
 
+outputs:
+  changed_variables_json:
+    description: "Array JSON com os nomes das variáveis criadas ou atualizadas no ambiente de destino."
+    value: ${{ steps.sync-vars.outputs.changed_variables_json }}
+
 runs:
   using: "composite"
   steps:
   - name: Sincronizar variáveis do ambiente (${{ inputs.SRC_ENV }}) para o ambiente (${{ inputs.DEST_ENV }})
+    id: sync-vars
     shell: bash
     env:
       GH_TOKEN: ${{ env.GHTOKEN }}
@@ -97,6 +103,8 @@ runs:
       # Resolve which variable names should be synced.
       # Supported formats: empty/[] (all), JSON array, or comma-separated list.
       declare -a NAMES_TO_COPY=()
+      declare -a CREATED_VARS=()
+      declare -a UPDATED_VARS=()
       COPY_ALL="0"
       if [[ -z "$VARS_TO_SYNC" || "$VARS_TO_SYNC" == "[]" ]]; then
         COPY_ALL="1"
@@ -177,6 +185,7 @@ runs:
           else
             echo "ℹ️ Atualizando a variável '$name' em '$DEST_ENV' (valor difere da origem '$SRC_ENV')."
             gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name" -f name="$name" -f value="$value"
+            UPDATED_VARS+=("$name")
             export_to_github_env "$name" "$value"
             echo "✅ Atualizado a variável '$name' e exportado para GITHUB_ENV."
           fi
@@ -186,11 +195,34 @@ runs:
           else
             echo "ℹ️ Criando a variável '$name' de '$SRC_ENV' para '$DEST_ENV'."
             gh api --silent --method POST -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT" -f name="$name" -f value="$value"
+            CREATED_VARS+=("$name")
             export_to_github_env "$name" "$value"
             echo "✅ Criado a variável '$name' e exportado para GITHUB_ENV."
           fi
         fi
       done
+
+      if [[ ${#CREATED_VARS[@]} -gt 0 ]]; then
+        created_variables_json="$(printf '%s\n' "${CREATED_VARS[@]}" | jq -R . | jq -cs .)"
+      else
+        created_variables_json='[]'
+      fi
+
+      if [[ ${#UPDATED_VARS[@]} -gt 0 ]]; then
+        updated_variables_json="$(printf '%s\n' "${UPDATED_VARS[@]}" | jq -R . | jq -cs .)"
+      else
+        updated_variables_json='[]'
+      fi
+
+      changed_variables_json="$(jq -cn --argjson created "$created_variables_json" --argjson updated "$updated_variables_json" '$created + $updated')"
+
+      if [[ ${changed_variables_json} == '[]' ]]; then
+        echo "⚠️ Nenhuma variável foi criada ou atualizada em '$DEST_ENV'."
+      else
+        echo "✅ Variáveis criadas ou atualizadas em '$DEST_ENV': $changed_variables_json"
+      fi
+      
+      echo "changed_variables_json=$changed_variables_json" >> "$GITHUB_OUTPUT"
 
       echo -e "\n✅ Processo de sincronização das variáveis de ambiente concluído.\n"
 
