@@ -35,14 +35,6 @@ runs:
       SRC_API_ENDPOINT="repos/$REPOSITORY/environments/$SRC_ENV/variables"
       DEST_API_ENDPOINT="repos/$REPOSITORY/environments/$DEST_ENV/variables"
 
-      echo "$$DRY_RUN_RAW"
-      echo "$REPOSITORY"
-      echo "$SRC_ENV"
-      echo "$DEST_ENV"
-      echo "$VARIABLES_TO_SYNC"
-      echo "$SRC_API_ENDPOINT"
-      echo "$DEST_API_ENDPOINT"
-
       if [[ "$DRY_RUN_RAW" != "true" && "$DRY_RUN_RAW" != "false" ]]; then
         echo "❌ Invalid 'DRY_RUN' value: '$DRY_RUN_RAW'. Use 'true' or 'false'."
         exit 1
@@ -113,7 +105,7 @@ runs:
               echo -e "ℹ️[DRY_RUN] Would delete '$name' from '$DEST_ENV' (missing in source '$SRC_ENV').\n"
             else
               echo "ℹ️ Deleting '$name' from '$DEST_ENV' (missing in source '$SRC_ENV')."
-              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "DEST_API_ENDPOINT/$name"
+              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_API_ENDPOINT/$name"
               echo -e "✅ Deleted '$name' from '$DEST_ENV'.\n"
             fi
           fi
@@ -125,7 +117,7 @@ runs:
               echo "ℹ️[DRY_RUN] Would delete '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
             else
               echo "ℹ️ Deleting '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
-              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "DEST_API_ENDPOINT/$name"
+              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_API_ENDPOINT/$name"
               echo -e "✅ Deleted '$name' from '$DEST_ENV'.\n"
             fi
           fi
@@ -153,7 +145,7 @@ runs:
         fi
 
         value="${SOURCE_VARS[$name]}"
-        if dest_response="$(gh api "DEST_API_ENDPOINT/$name" 2>/dev/null)"; then
+        if dest_response="$(gh api "$DEST_API_ENDPOINT/$name" 2>/dev/null)"; then
           dest_value="$(jq -r '.value // empty' <<< "$dest_response")"
 
           if [[ "$dest_value" == "$value" ]]; then
@@ -162,7 +154,7 @@ runs:
             echo "ℹ️[DRY_RUN] Would update '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
           else
             echo "ℹ️ Updating '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
-            gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "DEST_API_ENDPOINT/$name" -f name="$name" -f value="$value"
+            gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "$DEST_API_ENDPOINT/$name" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
             echo -e "✅ Updated '$name' and exported to GITHUB_ENV.\n"
           fi
@@ -171,7 +163,7 @@ runs:
             echo "ℹ️[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'."
           else
             echo "ℹ️ Creating '$name' from '$SRC_ENV' to '$DEST_ENV'."
-            gh api --silent --method POST -H 'Accept: application/vnd.github+json' "DEST_API_ENDPOINT" -f name="$name" -f value="$value"
+            gh api --silent --method POST -H 'Accept: application/vnd.github+json' "$DEST_API_ENDPOINT" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
             echo -e "✅ Created '$name' and exported to GITHUB_ENV.\n"
           fi
