@@ -6,21 +6,23 @@ description: >-
   (including deletion of destination-only variables), but you can also specify a subset of variable names to sync if desired."
 
 inputs:
-  dry_run:
+  DRY_RUN:
     description: "Dry-run mode flag (mainly used for testing). Use 'true' to only log actions, or 'false' to apply changes."
     required: false
     default: "false"
-  repository:
+  REPOSITORY:
     description: "The GitHub repository in 'owner/repo' format. Defaults to the current repository."
     required: false
     default: "${{ github.repository }}"
-  source_environment:
+  SRC_ENV:
     description: "The name of the source GitHub repository environment to sync variables from."
-    required: true
-  destination_environment:
+    required: false
+    default: "${{ matrix.AMBIENTE }}"
+  DEST_ENV:
     description: "The name of the destination GitHub repository environment to sync variables to."
-    required: true
-  variables:
+    required: false
+    default: "${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || matrix.AMBIENTE == 'tqs' && 'tqs-vars' }}"
+  VARS_TO_SYNC:
     description: >-
       'Optional comma of source variable names to sync. Accepted formats: JSON array (e.g. ["VAR_A", "VAR_B"]) or 
       comma-separated, no space, string (e.g. VAR_A,VAR_B). Defaults to empty JSON array, which means sync all source variables.'
@@ -38,10 +40,10 @@ runs:
       set -euo pipefail
 
       # Read action inputs.
-      DRY_RUN_RAW="${{ inputs.dry_run }}"
-      SRC_ENV="${{ inputs.source_environment }}"
-      DEST_ENV="${{ inputs.destination_environment }}"
-      VARS_TO_COPY='${{ inputs.variables }}'
+      DRY_RUN_RAW="${{ inputs.DRY_RUN }}"
+      SRC_ENV="${{ inputs.SRC_ENV }}"
+      DEST_ENV="${{ inputs.DEST_ENV }}"
+      VARS_TO_COPY='${{ inputs.VARS_TO_SYNC }}'
 
       if [[ "$DRY_RUN_RAW" != "true" && "$DRY_RUN_RAW" != "false" ]]; then
         echo "❌ Invalid 'dry_run' value: '$DRY_RUN_RAW'. Use 'true' or 'false'."
