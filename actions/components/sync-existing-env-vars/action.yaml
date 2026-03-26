@@ -21,9 +21,9 @@ inputs:
     description: "The name of the destination GitHub repository environment to sync variables to."
     required: true
   variables:
-    description: "Optional list of source variable names to sync. Accepted formats: JSON array (string) (e.g. '[\"VAR_A\",\"VAR_B\"]') or comma-separated, no space, string (e.g. VAR_A,VAR_B). Use '[]' or empty to sync all source variables."
+    description: 'Optional comma of source variable names to sync. Accepted formats: JSON array (e.g. ["VAR_A", "VAR_B"]) or comma-separated, no space, string (e.g. VAR_A,VAR_B). Defaults to empty string, which means sync all source variables.'
     required: false
-    default: '[]'
+    default: ""
 
 runs:
   using: "composite"
