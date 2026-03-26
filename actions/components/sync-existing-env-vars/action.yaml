@@ -28,6 +28,10 @@ inputs:
       comma-separated, no space, string (e.g. VAR_A,VAR_B). Defaults to empty JSON array, which means sync all source variables.'
     required: false
     default: '[]'
+  DEL_ENV_VARS:
+    description: "Flag to indicate whether destination-only variables should be deleted (when not syncing all source variables). Use 'true' to delete, or 'false' to keep."
+    required: false
+    default: "true"
 
 runs:
   using: "composite"
@@ -44,6 +48,7 @@ runs:
       SRC_ENV="${{ inputs.SRC_ENV }}"
       DEST_ENV="${{ inputs.DEST_ENV }}"
       VARS_TO_COPY='${{ inputs.VARS_TO_SYNC }}'
+      DEL_ENV_VARS="${{ inputs.DEL_ENV_VARS }}"
 
       if [[ "$DRY_RUN_RAW" != "true" && "$DRY_RUN_RAW" != "false" ]]; then
         echo "❌ Invalid 'dry_run' value: '$DRY_RUN_RAW'. Use 'true' or 'false'."
@@ -180,4 +185,10 @@ runs:
         fi
       done
 
-      echo -e "\n✅ Repository environment variables sync process completed.\n"
+      echo -e "✅ Repository environment variables sync process completed.\n"
+
+      if [[ "$DEL_ENV_VARS" == "true" ]]; then
+        echo "ℹ️ Removendo ambiente '$DEST_ENV'..."
+        gh api --method DELETE -H "Accept: application/vnd.github+json" "/repos/${{ inputs.repository }}/environments/$DEST_ENV"
+        echo -e "✅ Ambiente '$DEST_ENV' removido com sucesso.\n"
+      fi
