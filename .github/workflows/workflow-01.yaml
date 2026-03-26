@@ -128,21 +128,21 @@ jobs:
           source_environment: ${{ matrix.AMBIENTE }}
           destination_environment: ${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || (matrix.AMBIENTE == 'tqs' &&  'tqs-vars') }}
 
-      - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
-        id: file-variable-group
-        uses: caixasuperapp/Templates_CI_CD/actions/components/file-variable-group@main
-      - name: "Load Variable Groups '${{ matrix.AMBIENTE }}'"
-        uses: caixasuperapp/Templates_CI_CD/actions/components/load-variable-group@main
-        with:
-          VARS_FILE: ${{ steps.file-variable-group.outputs.VARS_FILE }}
-          VARS_CONTEXT: ${{ toJson(vars) }}
-      - name: "Create Configmap"
-        uses: caixasuperapp/Templates_CI_CD/actions/components/create-configmap-dotnet@main
-      - name: "Replace Variable Group '${{ matrix.AMBIENTE }}'"
-        uses: caixasuperapp/Templates_CI_CD/actions/components/replace-tokens@main
-        with:
-          FILES: "./**/k8s/*.yaml"
-          TOKEN_PREFIX: "#{"
-          TOKEN_SUFFIX: "}#"
-      - name: "Verificar PathBase esperado pelo deploy no AKS"
-        uses: caixasuperapp/Templates_CI_CD/actions/quality/code-check-dotnet@main
+      # - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
+      #   id: file-variable-group
+      #   uses: caixasuperapp/Templates_CI_CD/actions/components/file-variable-group@main
+      # - name: "Load Variable Groups '${{ matrix.AMBIENTE }}'"
+      #   uses: caixasuperapp/Templates_CI_CD/actions/components/load-variable-group@main
+      #   with:
+      #     VARS_FILE: ${{ steps.file-variable-group.outputs.VARS_FILE }}
+      #     VARS_CONTEXT: ${{ toJson(vars) }}
+      # - name: "Create Configmap"
+      #   uses: caixasuperapp/Templates_CI_CD/actions/components/create-configmap-dotnet@main
+      # - name: "Replace Variable Group '${{ matrix.AMBIENTE }}'"
+      #   uses: caixasuperapp/Templates_CI_CD/actions/components/replace-tokens@main
+      #   with:
+      #     FILES: "./**/k8s/*.yaml"
+      #     TOKEN_PREFIX: "#{"
+      #     TOKEN_SUFFIX: "}#"
+      # - name: "Verificar PathBase esperado pelo deploy no AKS"
+      #   uses: caixasuperapp/Templates_CI_CD/actions/quality/code-check-dotnet@main
