@@ -140,7 +140,7 @@ runs:
       # If destination exists and value differs, update it.
       for name in "${NAMES_TO_COPY[@]}"; do
         if [[ -z "${SOURCE_VARS[$name]+x}" ]]; then
-          echo "⚠️ '$name' does not exist in source environment '$SRC_ENV'. Skipping."
+          echo -e "⚠️ '$name' does not exist in source environment '$SRC_ENV'. Skipping.\n"
           continue
         fi
 
@@ -149,20 +149,20 @@ runs:
           dest_value="$(jq -r '.value // empty' <<< "$dest_response")"
 
           if [[ "$dest_value" == "$value" ]]; then
-            echo "⚠️ '$name' already exists in '$DEST_ENV' with the same value. Skipping update."
+            echo -e "⚠️ '$name' already exists in '$DEST_ENV' with the same value. Skipping update.\n"
           elif [[ "$DRY_RUN_RAW" == "true" ]]; then
-            echo "ℹ️[DRY_RUN] Would update '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
+            echo -e "ℹ️[DRY_RUN] Would update '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV').\n"
           else
-            echo "ℹ️ Updating '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
+            echo -e "ℹ️ Updating '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV').\n"
             gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "$DEST_API_ENDPOINT/$name" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
             echo -e "✅ Updated '$name' and exported to GITHUB_ENV.\n"
           fi
         else
           if [[ "$DRY_RUN_RAW" == "true" ]]; then
-            echo "ℹ️[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'."
+            echo -e "ℹ️[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'.\n"
           else
-            echo "ℹ️ Creating '$name' from '$SRC_ENV' to '$DEST_ENV'."
+            echo -e "ℹ️ Creating '$name' from '$SRC_ENV' to '$DEST_ENV'.\n"
             gh api --silent --method POST -H 'Accept: application/vnd.github+json' "$DEST_API_ENDPOINT" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
             echo -e "✅ Created '$name' and exported to GITHUB_ENV.\n"
