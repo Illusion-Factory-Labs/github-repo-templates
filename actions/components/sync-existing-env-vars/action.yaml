@@ -200,7 +200,8 @@ runs:
       GH_TOKEN: ${{ env.GHTOKEN }}
     run: |
       set -euo pipefail
-      
+
+      DEST_ENV="${{ inputs.DEST_ENV }}"
       DEST_VARS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables"
 
       # Buscar as variáveis de ambiente de destino novamente para garantir que o estado mais recente após a sincronização.
