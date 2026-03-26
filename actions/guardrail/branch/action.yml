@@ -1,0 +1,32 @@
+name: Guardrail Branch Policy
+description: 'Define uma política de execução dinâmica (run-policy) baseada na convenção do nome do branch (ex: release/*, hotfix/*).'
+outputs:
+  BRANCH_POLICY:
+    description: 'Define a política de execução: "run-on-success" (só roda com sucesso) ou "run-always" (roda sempre).'
+    value: ${{ steps.GetBranch.outputs.BRANCH_POLICY }}
+  BRANCH_STABLE:
+    description: 'Define a política de Branch Estável: "true" ou "false".'
+    value: ${{ steps.GetBranch.outputs.BRANCH_STABLE }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Define a Política de Execução da Branch
+      id: GetBranch
+      run: |
+        echo "📜 ===== [POLÍTICA DE BRANCH] Verificando o tipo da branch... ====="
+
+        if [[ "$GLOBAL_CURRENT_BRANCH" == release/* || "$GLOBAL_CURRENT_BRANCH" == hotfix/* ]]; then
+          echo "::notice title=🔍 POLÍTICA DEFINIDA::Branch Stable ('$GLOBAL_CURRENT_BRANCH') detectada. Política definida como 'run-on-success'. Obrigatório Sucesso em todas etapas."
+          echo "✅ ===== [POLÍTICA DEFINIDA] Branch Stable - run-on-success ====="
+          echo "✅ ===== [REGRA] Obrigatório Sucesso em todas etapas ====="
+          echo "BRANCH_POLICY=run-on-success" >> $GITHUB_OUTPUT
+          echo "BRANCH_STABLE=true" >> $GITHUB_OUTPUT
+        else
+          echo "::notice title=🔍 POLÍTICA DEFINIDA::Branch de Desenvolvimento ('$GLOBAL_CURRENT_BRANCH') detectada. Política definida como 'run-always'. Aceita Alertas em etapas de Test, QA e SEC."
+          echo "✅ ===== [POLÍTICA DEFINIDA] Branch de Desenvolvimento - run-always ====="
+          echo "✅ ===== [REGRA FLEXÍVEL] Aceita Alertas em etapas de Test, QA e SEC ====="
+          echo "BRANCH_POLICY=run-always" >> $GITHUB_OUTPUT
+          echo "BRANCH_STABLE=false" >> $GITHUB_OUTPUT
+        fi
+      shell: bash

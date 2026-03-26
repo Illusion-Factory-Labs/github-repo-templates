@@ -1,0 +1,45 @@
+name: 'Verify Tag GCM'
+description: Valida se a tag já existe.
+
+runs:
+  using: "composite"
+  steps:
+    - name: Verificar Tag
+      run: |
+        echo "🔎 ===== [VERIFICAÇÃO DE TAG] Verificando se a tag '$BUILD_VERSION' já existe... ====="
+        
+        # Busca todas as tags (paginando caso necessário)
+        API_URL="https://api.github.com/repos/$GLOBAL_GITHUB_ORG_REPO/git/refs/tags"
+        PAGE=1
+        TAG_EXISTS=0
+        MAX_PAGES=20
+
+        while [ $PAGE -le $MAX_PAGES ]; do
+          RESPONSE=$(curl -s -H "Authorization: Bearer $GLOBAL_GITHUB_TOKEN" "$API_URL?per_page=100&page=$PAGE")
+          # Testa se resposta é array e tem pelo menos 1 elemento
+          TAG_COUNT=$(echo "$RESPONSE" | jq 'if type=="array" then length else 0 end')
+          if [ "$TAG_COUNT" -eq 0 ]; then
+            break
+          fi
+          # Procura tag exata
+          TAG_FOUND=$(echo "$RESPONSE" | jq -r --arg TAG "refs/tags/$BUILD_VERSION" '.[] | select(.ref == $TAG) | .ref')
+          if [ "$TAG_FOUND" = "refs/tags/$BUILD_VERSION" ]; then
+            TAG_EXISTS=1
+            break
+          fi
+          # Se vier menos que 100, acabou as tags
+          if [ "$TAG_COUNT" -lt 100 ]; then
+            break
+          fi
+          PAGE=$((PAGE+1))
+        done
+
+        if [ "$TAG_EXISTS" -eq 1 ]; then
+          echo "::error::---- ALERTA ---- A versão $BUILD_VERSION já chegou em PRD e não pode ser sobrescrita. Sugestão: Rode novamente o pipeline com outro número de Versão. ---- ALERTA ----."
+          echo "❌ ===== [TAG EXISTENTE] A tag $BUILD_VERSION já existe e não pode ser usada. ====="
+          exit 1
+        else
+          echo "::notice title=🔍 TAG DISPONÍVEL::A versão $BUILD_VERSION está disponível para uma nova tag no repositório."
+          echo "✅ ===== [TAG DISPONÍVEL] A versão $BUILD_VERSION pode ser usada. ====="
+        fi
+      shell: bash

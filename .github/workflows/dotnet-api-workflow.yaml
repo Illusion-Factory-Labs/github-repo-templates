@@ -95,15 +95,15 @@ jobs:
       BRANCH_STABLE: ${{ steps.guardrail.outputs.BRANCH_STABLE }}
     steps:
       - name: Api Dotnet Variables
-        uses: caixasuperapp/Templates_CI_CD/actions/context/dotnet-api@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/context/dotnet-api@main
       - name: GCM Checks - Tag
-        uses: caixasuperapp/Templates_CI_CD/actions/gcm/verify-tag@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/gcm/verify-tag@main
       - name: GCM Checks - Branch
         if: always()
-        uses: caixasuperapp/Templates_CI_CD/actions/gcm/verify-branch@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/gcm/verify-branch@main
       - name: Guardrail
         id: guardrail
-        uses: caixasuperapp/Templates_CI_CD/actions/guardrail/branch@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/guardrail/branch@main
 
   Vars-Verify:
     needs: Gcm-Verify

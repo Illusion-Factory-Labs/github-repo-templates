@@ -1,0 +1,33 @@
+name: 'Verify Branch GCM'
+description: Valida se a branch está atualizada com main.
+
+runs:
+  using: "composite"
+  steps:
+    - name: Verificar branch
+      run: |
+        echo "🔍 ===== [VERIFICAÇÃO DE BRANCH] Verificando se '$GLOBAL_CURRENT_BRANCH' está atualizada... ====="
+
+        # Consulta a API de comparação do GitHub
+        API_URL="https://api.github.com/repos/$GLOBAL_GITHUB_ORG_REPO/compare/main...${{ github.sha }}"
+        RESPONSE=$(curl -s -H "Authorization: Bearer $GLOBAL_GITHUB_TOKEN" "$API_URL")
+
+        # Extrai as informações necessárias da resposta da API
+        STATUS=$(echo "$RESPONSE" | jq -r '.status')
+        BEHIND_COUNT=$(echo "$RESPONSE" | jq '.behind_by')
+
+        # Lógica de validação
+        if [ "$STATUS" = "identical" ] || [ "$STATUS" = "ahead" ] || [ "$BEHIND_COUNT" = "0" ]; then
+          AHEAD_COUNT=$(echo "$RESPONSE" | jq '.ahead_by')
+          echo "::notice title=🔍 BRANCH OK::A branch '$GLOBAL_CURRENT_BRANCH' está atualizada com a 'main' (Ahead: $AHEAD_COUNT, Behind: $BEHIND_COUNT). Diff aprovado."
+          echo "✅ ===== [BRANCH OK] Integridade da branch validada com sucesso. ====="
+        elif [ "$BEHIND_COUNT" = "null" ]; then
+          echo "::error::Falha ao comparar branches. A resposta da API foi inválida. Verifique se o repositório, o commit e o token estão corretos. Detalhes: $RESPONSE"
+          echo "❌ ===== [ERRO API] Falha ao obter dados de comparação da API do GitHub. ====="
+          exit 2
+        else
+          echo "::error::---- ALERTA ---- Branch '$GLOBAL_CURRENT_BRANCH' está desatualizada em $BEHIND_COUNT commit(s). Realize o merge da 'main' para a sua branch. ---- ALERTA ----"
+          echo "❌ ===== [BRANCH DESATUALIZADA] Merge com a 'main' é necessário. ====="
+          exit 1
+        fi
+      shell: bash
