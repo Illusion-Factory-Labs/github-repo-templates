@@ -1,34 +1,148 @@
-name: Workflow 01
+name: Api Dotnet
 
 on:
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      dry_run:
+        required: false
+        default: 'false'
+        type: string
+      variables_to_sync:
+        description: >-
+          'Optional comma of source variable names to sync. Accepted formats: JSON array (e.g. ["VAR_A", "VAR_B"]) or 
+          comma-separated, no space, string (e.g. VAR_A,VAR_B). Defaults to empty JSON array, which means sync all source variables.'
+        required: false
+        default: '[]'
+        type: string
+      BUILD_VERSION:
+        required: true
+        type: string
+      DOTNET_VERSION:
+        required: true
+        type: string
+      APIM_DEPLOY:
+        required: false
+        default: true
+        type: string
+      TEST_RUN:
+        required: false
+        default: true
+        type: boolean
+      SEC_RUN:
+        required: false
+        default: true
+        type: boolean
+      QA_RUN:
+        required: false
+        default: true
+        type: boolean
+      TRIGGER_PR:
+        required: false
+        default: false
+        type: boolean
+      AMBIENTES:
+        required: false
+        type: string
+        default: '["des"]'
+      INTEGRATION_RUN:
+        required: false
+        default: true
+        type: boolean
 
 permissions:
-  contents: read
+  actions: read
+  contents: write
+  packages: write
+  security-events: write
+  id-token: write
 
 env:
-  GLOBAL_REPO_VAR: github-repo-variables
-  GH_PAT: ${{ secrets.GH_PAT }}
-  WF_APP_ID: ${{ secrets.WF_APP_ID }}
-  WF_APP_PRIVATE_KEY: ${{ secrets.WF_APP_PRIVATE_KEY }}
-  GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+  #GLOBAL
+  GLOBAL_GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
-defaults:
-  run:
-    shell: bash
+  #SECRET - recriar como SECRET_
+  GH_APP_TEMPLATES_ID: ${{ secrets.GH_APP_TEMPLATES_ID }}
+  GH_APP_TEMPLATES_PK: ${{ secrets.GH_APP_TEMPLATES_PK }}
+  SONARQUBE_ROOT_CERT_II: ${{ secrets.SONARQUBE_ROOT_CERT_II }}
+  SONARQUBE_USER: ${{ secrets.SONARQUBE_USER }}
+  SONARQUBE_PASSWORD: ${{ secrets.SONARQUBE_PASSWORD }}
+  SECRET_SONARQUBE_TOKEN: ${{ secrets.SECRET_SONARQUBE_TOKEN }}
+  SECRET_TEAMS_WEBHOOK_URL: ${{ secrets.SECRET_TEAMS_WEBHOOK_URL }}
+  REDISDISPOSITIVOCONNECTIONSTRING: ${{ secrets.REDISDISPOSITIVOCONNECTIONSTRING }}
+  EVENTHUBCONNECTIONSTRING: ${{ secrets.EVENTHUBCONNECTIONSTRING }}
+  URLHSM: ${{ secrets.URLHSM }}
+
+  #CONTEXT
+  BUILD_VERSION: "${{ inputs.BUILD_VERSION }}"
+  DOTNET_VERSION: "${{ inputs.DOTNET_VERSION }}"
+  APIM_DEPLOY: "${{ inputs.APIM_DEPLOY }}"
+  TRIGGER_PR: "${{ inputs.TRIGGER_PR }}"
+  INTEGRATION_RUN: "${{ inputs.INTEGRATION_RUN }}"
+  ADV_SEC_LANG: "csharp"
+
+  #ORG
+  ORG_SONARQUBE_HOST: ${{ vars.ORG_SONARQUBE_HOST }}
+  ORG_ACR_IDENTITY_AZURE_CLIENT_ID: ${{ vars.ORG_ACR_IDENTITY_AZURE_CLIENT_ID }}
+  ORG_ACR_IDENTITY_AZURE_TENANT_ID: ${{ vars.ORG_ACR_IDENTITY_AZURE_TENANT_ID }}
+  ORG_ACR_IDENTITY_AZURE_SUBSCRIPTION_ID: ${{ vars.ORG_ACR_IDENTITY_AZURE_SUBSCRIPTION_ID }}
+  ORG_CONTAINER_REGISTRY: ${{ vars.ORG_CONTAINER_REGISTRY }}
 
 jobs:
-  test-variables:
-    runs-on: ubuntu-latest
-    # strategy:
-    #   matrix:
-    #     AMBIENTE: [prd, des, tqs, qa]
-    # environment: ${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || matrix.AMBIENTE == 'tqs' && 'tqs-vars' || matrix.AMBIENTE }}
-    # steps:
-    #   - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
-    #     id: file-variable-group
-    #     uses: Illusion-Factory-Labs/github-repo-templates/actions/components/file-variable-group@main
-    #     with:
-    #       AMBIENTE: ${{ matrix.AMBIENTE }}
-      
-      
+  Gcm-Verify:
+    runs-on: "ubuntu-latest"
+    outputs:
+      BRANCH_POLICY: ${{ steps.guardrail.outputs.BRANCH_POLICY }}
+      BRANCH_STABLE: ${{ steps.guardrail.outputs.BRANCH_STABLE }}
+    steps:
+      - name: Api Dotnet Variables
+        uses: caixasuperapp/Templates_CI_CD/actions/context/dotnet-api@main
+      - name: GCM Checks - Tag
+        uses: caixasuperapp/Templates_CI_CD/actions/gcm/verify-tag@main
+      - name: GCM Checks - Branch
+        if: always()
+        uses: caixasuperapp/Templates_CI_CD/actions/gcm/verify-branch@main
+      - name: Guardrail
+        id: guardrail
+        uses: caixasuperapp/Templates_CI_CD/actions/guardrail/branch@main
+
+  Vars-Verify:
+    needs: Gcm-Verify
+    strategy:
+      fail-fast: false
+      matrix:
+        AMBIENTE: ${{ fromJson(needs.Gcm-Verify.outputs.BRANCH_STABLE == 'true' && '["des","prd"]' || inputs.AMBIENTES) }}
+    runs-on: "ubuntu-latest"
+    environment: ${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || (matrix.AMBIENTE == 'tqs' &&  'tqs-vars' || matrix.AMBIENTE) }}
+    steps:
+      - name: "Api Dotnet Variables"
+        uses: caixasuperapp/Templates_CI_CD/actions/context/dotnet-api@main
+      - name: "Token Create"
+        uses: caixasuperapp/Templates_CI_CD/actions/auth/githubapp@main
+
+      - name: "Copy GitHub repo environment vars for approval skip (if prd or tqs)"
+        if: ${{ matrix.AMBIENTE == 'prd' || matrix.AMBIENTE == 'tqs' }}
+        uses: caixasuperapp/Templates_CI_CD/actions/components/sync-repo-env-vars@main
+        with:
+          dry_run: ${{ inputs.DRY_RUN }}
+          variables: ${{ inputs.VARIABLES_TO_SYNC }}
+          source_environment: ${{ matrix.AMBIENTE }}
+          destination_environment: ${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || (matrix.AMBIENTE == 'tqs' &&  'tqs-vars') }}
+
+      - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
+        id: file-variable-group
+        uses: caixasuperapp/Templates_CI_CD/actions/components/file-variable-group@main
+      - name: "Load Variable Groups '${{ matrix.AMBIENTE }}'"
+        uses: caixasuperapp/Templates_CI_CD/actions/components/load-variable-group@main
+        with:
+          VARS_FILE: ${{ steps.file-variable-group.outputs.VARS_FILE }}
+          VARS_CONTEXT: ${{ toJson(vars) }}
+      - name: "Create Configmap"
+        uses: caixasuperapp/Templates_CI_CD/actions/components/create-configmap-dotnet@main
+      - name: "Replace Variable Group '${{ matrix.AMBIENTE }}'"
+        uses: caixasuperapp/Templates_CI_CD/actions/components/replace-tokens@main
+        with:
+          FILES: "./**/k8s/*.yaml"
+          TOKEN_PREFIX: "#{"
+          TOKEN_SUFFIX: "}#"
+      - name: "Verificar PathBase esperado pelo deploy no AKS"
+        uses: caixasuperapp/Templates_CI_CD/actions/quality/code-check-dotnet@main
