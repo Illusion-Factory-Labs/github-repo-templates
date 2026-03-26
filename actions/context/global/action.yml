@@ -1,0 +1,115 @@
+name: Global Variables
+description: "Exporta variáveis de ambiente globais para o workflow"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Exportar Variáveis de Ambiente Globais
+      run: |
+        echo "EXPORTANDO VARIÁVEIS GLOBAIS: Definindo e exportando variáveis de contexto globais."
+        echo "🌍 ===== [VARIÁVEIS GLOBAIS] Coletando informações do ambiente... ====="
+        
+        # GET/SET GLOBAL VARS
+        GLOBAL_GITHUB_ORG_REPO=${{ github.repository }}
+        GLOBAL_REPO_NAME=$(basename "$GLOBAL_GITHUB_ORG_REPO")
+        GLOBAL_BUILD_ID=${{ github.run_id }}
+        GLOBAL_TEMP_DIR=${{ runner.temp }}
+        GLOBAL_REPO_VAR=SA_Variables_Global
+        GLOBAL_CURRENT_BRANCH="${{ github.ref_name }}"
+        GLOBAL_OWNER_NAME="${{ github.repository_owner }}"
+        GLOBAL_RUN_DATE=$(TZ='America/Sao_Paulo' date +%d/%m/%Y)
+        GLOBAL_GITHUB_ACTOR="${{ github.actor }}"
+        GLOBAL_GOVERNANCE_REPO="SAPP_Governance"
+        GLOBAL_FULL_SHA="${{ github.sha }}"
+        GLOBAL_RUN_NUMBER="${{ github.run_number }}"
+
+        GLOBAL_GITHUB_USERNAME="c160683_caixa"
+
+        if [[ "$TRIGGER_PR" == "true" ]]; then
+          GLOBAL_CURRENT_BRANCH="${{ github.head_ref }}"
+          if [[ -z "$GLOBAL_CURRENT_BRANCH" ]]; then
+            GLOBAL_CURRENT_BRANCH="${{ github.ref_name }}"
+          fi
+          echo "GLOBAL_CURRENT_BRANCH=$GLOBAL_CURRENT_BRANCH"
+        fi
+
+        #### IF PARA REPOS MOBILE NATIVOS: '-' AO INVES DE '_'
+        if [[ "$GLOBAL_REPO_NAME" == *-xid-* ]]; then
+          GLOBAL_SERVICE_NAME=$(echo "$GLOBAL_REPO_NAME" | tr '[:lower:]' '[:upper:]')
+          IFS='-' read -r GLOBAL_PROJECT_SIGLA GLOBAL_PROJECT_GROUP GLOBAL_PROJECT_MODULE GLOBAL_PROJECT_TYPE <<< "${GLOBAL_SERVICE_NAME}"
+        else
+          GLOBAL_SERVICE_NAME=$(echo "$GLOBAL_REPO_NAME" | tr '[:upper:]' '[:lower:]')
+          NAMES_COUNT=$(awk -F'_' '{print NF}' <<< "${GLOBAL_SERVICE_NAME}")
+          if [[ "$NAMES_COUNT" -eq 4 ]]; then
+            # Para 4 nomes: SIGLA_TIPO_GRUPO_MODULO
+            IFS='_' read -r GLOBAL_PROJECT_SIGLA GLOBAL_PROJECT_TYPE GLOBAL_PROJECT_GROUP GLOBAL_PROJECT_MODULE <<< "${GLOBAL_SERVICE_NAME}"
+          else
+            # Para 3 nomes: TIPO_GRUPO_MODULO
+            IFS='_' read -r GLOBAL_PROJECT_TYPE GLOBAL_PROJECT_GROUP GLOBAL_PROJECT_MODULE <<< "${GLOBAL_SERVICE_NAME}"
+          fi
+        fi
+  
+        echo "VARIÁVEIS DEFINIDAS: As seguintes variáveis globais foram definidas e exportadas:"
+        # PRINT GLOBAL VARS
+        echo "  - GLOBAL_GITHUB_ORG_REPO: $GLOBAL_GITHUB_ORG_REPO"
+        echo "  - GLOBAL_REPO_NAME: $GLOBAL_REPO_NAME"
+        echo "  - GLOBAL_REPO_VAR: $GLOBAL_REPO_VAR"
+        echo "  - GLOBAL_SERVICE_NAME: $GLOBAL_SERVICE_NAME"
+        echo "  - GLOBAL_PROJECT_SIGLA: $GLOBAL_PROJECT_SIGLA"
+        echo "  - GLOBAL_PROJECT_TYPE: $GLOBAL_PROJECT_TYPE"
+        echo "  - GLOBAL_PROJECT_GROUP: $GLOBAL_PROJECT_GROUP"
+        echo "  - GLOBAL_PROJECT_MODULE: $GLOBAL_PROJECT_MODULE"
+        echo "  - GLOBAL_BUILD_ID: $GLOBAL_BUILD_ID"
+        echo "  - GLOBAL_TEMP_DIR: $GLOBAL_TEMP_DIR"
+        echo "  - GLOBAL_CURRENT_BRANCH: $GLOBAL_CURRENT_BRANCH"
+        echo "  - GLOBAL_BASE_BRANCH: $GLOBAL_BASE_BRANCH"
+        echo "  - GLOBAL_OWNER_NAME: $GLOBAL_OWNER_NAME"
+        echo "  - GLOBAL_RUN_DATE: $GLOBAL_RUN_DATE"
+        echo "  - GLOBAL_GITHUB_ACTOR: $GLOBAL_GITHUB_ACTOR"
+        echo "  - GLOBAL_GOVERNANCE_REPO: $GLOBAL_GOVERNANCE_REPO"
+        echo "  - GLOBAL_GITHUB_USERNAME: $GLOBAL_GITHUB_USERNAME"
+        echo "  - GLOBAL_FULL_SHA: $GLOBAL_FULL_SHA"
+        echo "  - GLOBAL_RUN_NUMBER: $GLOBAL_RUN_NUMBER"
+        
+
+        # EXPORT GLOBAL VARS
+        echo "GLOBAL_GITHUB_ORG_REPO=$GLOBAL_GITHUB_ORG_REPO" >> $GITHUB_ENV
+        echo "GLOBAL_REPO_NAME=$GLOBAL_REPO_NAME" >> $GITHUB_ENV
+        echo "GLOBAL_REPO_VAR=$GLOBAL_REPO_VAR" >> $GITHUB_ENV
+        echo "GLOBAL_SERVICE_NAME=$GLOBAL_SERVICE_NAME" >> $GITHUB_ENV
+        echo "GLOBAL_PROJECT_SIGLA=$GLOBAL_PROJECT_SIGLA" >> $GITHUB_ENV
+        echo "GLOBAL_PROJECT_TYPE=$GLOBAL_PROJECT_TYPE" >> $GITHUB_ENV
+        echo "GLOBAL_PROJECT_GROUP=$GLOBAL_PROJECT_GROUP" >> $GITHUB_ENV
+        echo "GLOBAL_PROJECT_MODULE=$GLOBAL_PROJECT_MODULE" >> $GITHUB_ENV
+        echo "GLOBAL_BUILD_ID=$GLOBAL_BUILD_ID" >> $GITHUB_ENV
+        echo "GLOBAL_TEMP_DIR=$GLOBAL_TEMP_DIR" >> $GITHUB_ENV
+        echo "GLOBAL_CURRENT_BRANCH=$GLOBAL_CURRENT_BRANCH" >> $GITHUB_ENV
+        echo "GLOBAL_BASE_BRANCH=$GLOBAL_BASE_BRANCH" >> $GITHUB_ENV
+        echo "GLOBAL_OWNER_NAME=$GLOBAL_OWNER_NAME" >> $GITHUB_ENV
+        echo "GLOBAL_RUN_DATE=$GLOBAL_RUN_DATE" >> $GITHUB_ENV
+        echo "GLOBAL_GITHUB_ACTOR=$GLOBAL_GITHUB_ACTOR" >> $GITHUB_ENV
+        echo "GLOBAL_GOVERNANCE_REPO=$GLOBAL_GOVERNANCE_REPO" >> $GITHUB_ENV
+        echo "GLOBAL_GITHUB_USERNAME=$GLOBAL_GITHUB_USERNAME" >> $GITHUB_ENV
+        echo "GLOBAL_FULL_SHA=$GLOBAL_FULL_SHA" >> $GITHUB_ENV
+        echo "GLOBAL_RUN_NUMBER=$GLOBAL_RUN_NUMBER" >> $GITHUB_ENV
+
+        # SYSTEM GLOBAL TOKEN (o valor do token não é exposto no log)
+        echo "GLOBAL_GITHUB_TOKEN=$GLOBAL_GITHUB_TOKEN" >> $GITHUB_ENV
+        echo "GLOBAL_PAT_PACKAGE=$GLOBAL_PAT_PACKAGE" >> $GITHUB_ENV
+        
+        # VARIAVEIS SONARQUBE QUALITY GATE (QG) - DEFAULT VALUES HERDADAS PARA OS CONTEXTOS
+        echo "SONAR_QG_BUG=${SONAR_QG_BUG:=0}" | tee -a $GITHUB_ENV
+        echo "SONAR_QG_VULNERABILITY=${SONAR_QG_VULNERABILITY:=0}" | tee -a $GITHUB_ENV
+        echo "SONAR_QG_CODE_SMELL_INFO_MINOR=${SONAR_QG_CODE_SMELL_INFO_MINOR:=20}" | tee -a $GITHUB_ENV
+        echo "SONAR_QG_CODE_SMELL_MAJOR=${SONAR_QG_CODE_SMELL_MAJOR:=5}" | tee -a $GITHUB_ENV
+        echo "SONAR_QG_CODE_SMELL_CRITICAL=${SONAR_QG_CODE_SMELL_CRITICAL:=1}" | tee -a $GITHUB_ENV
+        echo "SONAR_QG_CODE_SMELL_BLOCKER=${SONAR_QG_CODE_SMELL_BLOCKER:=0}" | tee -a $GITHUB_ENV
+        echo "SONAR_QG_COVERAGE=${SONAR_QG_COVERAGE:=80}" | tee -a $GITHUB_ENV
+        echo "SONAR_QG_DEBT_MINUTES=${SONAR_QG_DEBT_MINUTES:=420}" | tee -a $GITHUB_ENV
+        echo "SONAR_QG_SECURITY_RATING=${SONAR_QG_SECURITY_RATING:=4.0}" | tee -a $GITHUB_ENV
+
+        echo "✅ ===== [VARIÁVEIS GLOBAIS] Variáveis exportadas com sucesso para o ambiente. ====="
+
+      shell: bash
+
+
