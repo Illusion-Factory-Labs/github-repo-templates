@@ -246,8 +246,8 @@ runs:
 
       echo "ℹ️ Excluindo ambiente '$DEST_ENV'..."
       if [[ "$DRY_RUN_RAW" == "true" ]]; then
-        echo "[DRY_RUN] Would delete environment '$DEST_ENV'."
+        echo "[DRY_RUN] O ambiente '$DEST_ENV' seria excluído."
       else
         gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"
-        echo "✅ Environment '$DEST_ENV' deleted."
+        echo "✅ Ambiente '$DEST_ENV' excluído com sucesso."
       fi
