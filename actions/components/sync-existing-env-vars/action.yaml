@@ -7,9 +7,9 @@ description: >-
 
 inputs:
   dry_run:
-    description: "Dry-run mode flag (mainly used for testing). Use '1' to only log actions, or '0' to apply changes."
+    description: "Dry-run mode flag (mainly used for testing). Use 'true' to only log actions, or 'false' to apply changes."
     required: false
-    default: "0"
+    default: "false"
   repository:
     description: "The GitHub repository in 'owner/repo' format. Defaults to the current repository."
     required: false
@@ -41,12 +41,12 @@ runs:
       DEST_ENV="${{ inputs.destination_environment }}"
       VARS_TO_COPY='${{ inputs.variables }}'
 
-      if [[ "$DRY_RUN_RAW" != "0" && "$DRY_RUN_RAW" != "1" ]]; then
-        echo "❌ Invalid 'dry_run' value: '$DRY_RUN_RAW'. Use '0' or '1'."
+      if [[ "$DRY_RUN_RAW" != "true" && "$DRY_RUN_RAW" != "false" ]]; then
+        echo "❌ Invalid 'dry_run' value: '$DRY_RUN_RAW'. Use 'true' or 'false'."
         exit 1
       fi
 
-      if [[ "$DRY_RUN_RAW" == "1" ]]; then
+      if [[ "$DRY_RUN_RAW" == "true" ]]; then
         echo "ℹ️ 'dry_run' enabled. No variables will be created or modified."
       fi
 
@@ -107,7 +107,7 @@ runs:
       if [[ "$COPY_ALL" == "1" ]]; then
         for name in "${!DEST_VARS[@]}"; do
           if [[ -z "${SOURCE_VARS[$name]+x}" ]]; then
-            if [[ "$DRY_RUN_RAW" == "1" ]]; then
+            if [[ "$DRY_RUN_RAW" == "true" ]]; then
               echo "[DRY_RUN] Would delete '$name' from '$DEST_ENV' (missing in source '$SRC_ENV')."
             else
               echo "ℹ️ Deleting '$name' from '$DEST_ENV' (missing in source '$SRC_ENV')."
@@ -119,7 +119,7 @@ runs:
       else
         for name in "${NAMES_TO_COPY[@]}"; do
           if [[ -n "${DEST_VARS[$name]+x}" && -z "${SOURCE_VARS[$name]+x}" ]]; then
-            if [[ "$DRY_RUN_RAW" == "1" ]]; then
+            if [[ "$DRY_RUN_RAW" == "true" ]]; then
               echo "[DRY_RUN] Would delete '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
             else
               echo "ℹ️ Deleting '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
@@ -156,7 +156,7 @@ runs:
 
           if [[ "$dest_value" == "$value" ]]; then
             echo "⚠️ '$name' already exists in '$DEST_ENV' with the same value. Skipping update."
-          elif [[ "$DRY_RUN_RAW" == "1" ]]; then
+          elif [[ "$DRY_RUN_RAW" == "true" ]]; then
             echo "[DRY_RUN] Would update '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
           else
             echo "ℹ️ Updating '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
@@ -165,7 +165,7 @@ runs:
             echo "✅ Updated '$name' and exported to GITHUB_ENV."
           fi
         else
-          if [[ "$DRY_RUN_RAW" == "1" ]]; then
+          if [[ "$DRY_RUN_RAW" == "true" ]]; then
             echo "[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'."
           else
             echo "ℹ️ Creating '$name' from '$SRC_ENV' to '$DEST_ENV'."
@@ -176,4 +176,4 @@ runs:
         fi
       done
 
-      echo "✅ Repository environment variables sync process completed."
+      echo -e "\n✅ Repository environment variables sync process completed.\n"
