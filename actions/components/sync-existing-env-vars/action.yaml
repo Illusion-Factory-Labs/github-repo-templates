@@ -1,42 +1,48 @@
-name: Sync GitHub repository environment variables
+name: Sincronizar variáveis de ambiente do repositório GitHub
 description: >-
-  "Sync variables for the same repository from a source environment to a destination environment, creating or updating destination values when needed. 
-  This action is useful for keeping environment variables DRY across multiple environments (e.g. dev, staging, prod) or for syncing variables 
-  to a new environment without needing to re-enter them manually. By default, all variables from the source environment will be synced to destination 
-  (including deletion of destination-only variables), but you can also specify a subset of variable names to sync if desired."
+  Sincroniza variáveis para o mesmo repositório de um ambiente de origem para um ambiente de destino, criando ou atualizando 
+  valores de destino quando necessário. Por padrão, todas as variáveis do ambiente de origem serão sincronizadas para o destino 
+  (incluindo a exclusão de variáveis exclusivas do destino), mas também é possível especificar um subconjunto de nomes de 
+  variáveis para sincronizar, se desejar.
 
 inputs:
   DRY_RUN:
-    description: "Dry-run mode flag (mainly used for testing). Use 'true' to only log actions, or 'false' to apply changes."
+    description: >-
+      Flag de modo dry-run (principalmente usado para testes). Use 'true' para somente registrar as ações que seriam tomadas sem 
+      realmente criar, atualizar ou excluir variáveis, ou 'false' para aplicar alterações.
     required: false
     default: "false"
   REPOSITORY:
-    description: "The GitHub repository in 'owner/repo' format. Defaults to the current repository."
+    description: "O repositório GitHub no formato 'owner/repo'. Padrão é o repositório atual."
     required: false
     default: "${{ github.repository }}"
   SRC_ENV:
-    description: "The name of the source GitHub repository environment to sync variables from."
+    description: "O nome do ambiente de origem do repositório GitHub para sincronizar variáveis."
     required: false
     default: "${{ matrix.AMBIENTE }}"
   DEST_ENV:
-    description: "The name of the destination GitHub repository environment to sync variables to."
+    description: "O nome do ambiente de destino do repositório GitHub para sincronizar variáveis."
     required: false
     default: "${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || matrix.AMBIENTE == 'tqs' && 'tqs-vars' }}"
   VARS_TO_SYNC:
     description: >-
-      'Optional comma of source variable names to sync. Accepted formats: JSON array (e.g. ["VAR_A", "VAR_B"]) or 
-      comma-separated, no space, string (e.g. VAR_A,VAR_B). Defaults to empty JSON array, which means sync all source variables.'
+      Opcionalmente, uma lista de nomes de variáveis de origem para sincronizar. Formatos aceitos: array JSON 
+      (ex. ["VAR_A", "VAR_B"]) ou string separada por vírgulas, sem espaços (ex. VAR_A,VAR_B). O padrão é um array JSON vazio, o 
+      que significa sincronizar todas as variáveis de origem.
     required: false
     default: '[]'
-  DEL_ENV_VARS:
-    description: "Flag to indicate whether destination-only variables should be deleted (when not syncing all source variables). Use 'true' to delete, or 'false' to keep."
+  DEL_ENV:
+    description: >-
+      Flag para indicar se o ambiente de destino criado deve ser excluído. Use 'true' para excluir, ou 'false' para 
+      manter o ambiente. Por padrão, depois da exportacão das variáveis para o GITHUB_ENV, o ambiente de destino será 
+      excluido.
     required: false
     default: "true"
 
 runs:
   using: "composite"
   steps:
-  - name: Sync existing GitHub repository environment variables
+  - name: Sincronizar variáveis do ambiente (${{ inputs.SRC_ENV }}) para o ambiente (${{ inputs.DEST_ENV }})
     shell: bash
     env:
       GH_TOKEN: ${{ env.GHTOKEN }}
@@ -47,8 +53,9 @@ runs:
       DRY_RUN_RAW="${{ inputs.DRY_RUN }}"
       SRC_ENV="${{ inputs.SRC_ENV }}"
       DEST_ENV="${{ inputs.DEST_ENV }}"
-      VARS_TO_COPY='${{ inputs.VARS_TO_SYNC }}'
-      DEL_ENV_VARS="${{ inputs.DEL_ENV_VARS }}"
+      VARS_TO_SYNC='${{ inputs.VARS_TO_SYNC }}'
+      SRC_VARS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$SRC_ENV/variables"
+      DEST_VARS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables"
 
       if [[ "$DRY_RUN_RAW" != "true" && "$DRY_RUN_RAW" != "false" ]]; then
         echo "❌ Invalid 'dry_run' value: '$DRY_RUN_RAW'. Use 'true' or 'false'."
@@ -60,7 +67,7 @@ runs:
       fi
 
       # Fetch all variables from the source environment.
-      response="$(gh api "repos/${{ inputs.repository }}/environments/$SRC_ENV/variables")"
+      response="$(gh api "$SRC_VARS_API_ENDPOINT")"
       # Fail fast if GitHub API response is not valid JSON.
       if ! jq -e . >/dev/null 2>&1 <<< "$response"; then
         echo "❌ Failed to parse source variables response as JSON."
@@ -75,7 +82,7 @@ runs:
       done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$response")
 
       # Fetch and parse destination environment variables.
-      dest_list_response="$(gh api "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables")"
+      dest_list_response="$(gh api "$DEST_VARS_API_ENDPOINT")"
       if ! jq -e . >/dev/null 2>&1 <<< "$dest_list_response"; then
         echo "❌ Failed to parse destination variables response as JSON."
         echo "$dest_list_response"
@@ -91,23 +98,23 @@ runs:
       # Supported formats: empty/[] (all), JSON array, or comma-separated list.
       declare -a NAMES_TO_COPY=()
       COPY_ALL="0"
-      if [[ -z "$VARS_TO_COPY" || "$VARS_TO_COPY" == "[]" ]]; then
+      if [[ -z "$VARS_TO_SYNC" || "$VARS_TO_SYNC" == "[]" ]]; then
         COPY_ALL="1"
         for name in "${!SOURCE_VARS[@]}"; do
           NAMES_TO_COPY+=("$name")
         done
-      elif jq -e . >/dev/null 2>&1 <<< "$VARS_TO_COPY" && jq -e 'type == "array"' >/dev/null 2>&1 <<< "$VARS_TO_COPY"; then
+      elif jq -e . >/dev/null 2>&1 <<< "$VARS_TO_SYNC" && jq -e 'type == "array"' >/dev/null 2>&1 <<< "$VARS_TO_SYNC"; then
         while read -r name; do
           [[ -z "$name" ]] && continue
           NAMES_TO_COPY+=("$name")
-        done < <(jq -r '.[]' <<< "$VARS_TO_COPY")
+        done < <(jq -r '.[]' <<< "$VARS_TO_SYNC")
       else
         while IFS= read -r name; do
           name="${name## }"
           name="${name%% }"
           [[ -z "$name" ]] && continue
           NAMES_TO_COPY+=("$name")
-        done < <(tr ',' '\n' <<< "$VARS_TO_COPY")
+        done < <(tr ',' '\n' <<< "$VARS_TO_SYNC")
       fi
 
       # Delete destination variables that should no longer exist.
@@ -120,7 +127,7 @@ runs:
               echo "[DRY_RUN] Would delete '$name' from '$DEST_ENV' (missing in source '$SRC_ENV')."
             else
               echo "ℹ️ Deleting '$name' from '$DEST_ENV' (missing in source '$SRC_ENV')."
-              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables/$name"
+              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name"
               echo "✅ Deleted '$name' from '$DEST_ENV'."
             fi
           fi
@@ -132,7 +139,7 @@ runs:
               echo "[DRY_RUN] Would delete '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
             else
               echo "ℹ️ Deleting '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
-              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables/$name"
+              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name"
               echo "✅ Deleted '$name' from '$DEST_ENV'."
             fi
           fi
@@ -160,7 +167,7 @@ runs:
         fi
 
         value="${SOURCE_VARS[$name]}"
-        if dest_response="$(gh api "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables/$name" 2>/dev/null)"; then
+        if dest_response="$(gh api "$DEST_VARS_API_ENDPOINT/$name" 2>/dev/null)"; then
           dest_value="$(jq -r '.value // empty' <<< "$dest_response")"
 
           if [[ "$dest_value" == "$value" ]]; then
@@ -169,7 +176,7 @@ runs:
             echo "[DRY_RUN] Would update '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
           else
             echo "ℹ️ Updating '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
-            gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables/$name" -f name="$name" -f value="$value"
+            gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
             echo "✅ Updated '$name' and exported to GITHUB_ENV."
           fi
@@ -178,17 +185,66 @@ runs:
             echo "[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'."
           else
             echo "ℹ️ Creating '$name' from '$SRC_ENV' to '$DEST_ENV'."
-            gh api --silent --method POST -H 'Accept: application/vnd.github+json' "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables" -f name="$name" -f value="$value"
+            gh api --silent --method POST -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
             echo "✅ Created '$name' and exported to GITHUB_ENV."
           fi
         fi
       done
 
-      echo -e "✅ Repository environment variables sync process completed.\n"
+      echo -e "✅ Processo de sincronização das variáveis de ambiente do repositório concluído.\n"
 
-      if [[ "$DEL_ENV_VARS" == "true" ]]; then
-        echo "ℹ️ Removendo ambiente '$DEST_ENV'..."
-        gh api --method DELETE -H "Accept: application/vnd.github+json" "/repos/${{ inputs.repository }}/environments/$DEST_ENV"
-        echo -e "✅ Ambiente '$DEST_ENV' removido com sucesso.\n"
+  - name: "Exportar as variáveis do ambiente de destino para GITHUB_ENV (para uso em passos posteriores do workflow)"
+    shell: bash
+    env:
+      GH_TOKEN: ${{ env.GHTOKEN }}
+    run: |
+      set -euo pipefail
+      DEST_VARS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables"
+
+      # Buscar as variáveis de ambiente de destino novamente para garantir que o estado mais recente após a sincronização.
+      dest_list_response="$(gh api "$DEST_VARS_API_ENDPOINT")"
+      if ! jq -e . >/dev/null 2>&1 <<< "$dest_list_response"; then
+        echo "❌ Falha ao analisar a resposta das variáveis de destino como JSON."
+        echo "$dest_list_response"
+        exit 1
+      fi
+
+      # Exportar cada variável de destino para GITHUB_ENV para uso em passos posteriores do workflow.
+      while IFS=$'\t' read -r name value; do
+        export_to_github_env() {
+          local var_name="$1"
+          local var_value="$2"
+          local delimiter
+          delimiter="__GITHUB_ENV_DELIM_${RANDOM}_$(date +%s)__"
+          {
+            echo "$var_name<<$delimiter"
+            echo "$var_value"
+            echo "$delimiter"
+          } >> "$GITHUB_ENV"
+        }
+
+        export_to_github_env "$name" "$value"
+        echo "✅ Exportado '$name' de '$DEST_ENV' para GITHUB_ENV."
+      done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$dest_list_response")
+
+      echo -e "✅ Todas as variáveis de '$DEST_ENV' foram exportadas para GITHUB_ENV.\n"
+
+  - name: "Excluir ambiente de destino '$DEST_ENV' criado (se DEL_ENV for 'true')"
+    if: ${{ inputs.DEL_ENV == 'true' }}
+    shell: bash
+    env:
+      GH_TOKEN: ${{ env.GHTOKEN }}
+    run: |
+      set -euo pipefail
+
+      DRY_RUN_RAW="${{ inputs.DRY_RUN }}"
+      DEST_ENV_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV"
+
+      echo "ℹ️ Excluindo ambiente '$DEST_ENV'..."
+      if [[ "$DRY_RUN_RAW" == "true" ]]; then
+        echo "[DRY_RUN] Would delete environment '$DEST_ENV'."
+      else
+        gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"
+        echo "✅ Environment '$DEST_ENV' deleted."
       fi
