@@ -211,7 +211,7 @@ runs:
       if [[ "$changed_variables_json" == '[]' ]]; then
         echo "⚠️ Nenhuma variável foi criada ou atualizada em '$DEST_ENV'."
       else
-        echo "✅ Variáveis criadas ou atualizadas em '$DEST_ENV': $changed_variables_json"
+        echo -e "\n✅ Variáveis criadas ou atualizadas em '$DEST_ENV': $changed_variables_json"
       fi
       
       echo "changed_variables_json=$changed_variables_json" >> "$GITHUB_OUTPUT"
