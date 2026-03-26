@@ -61,8 +61,8 @@ env:
   GLOBAL_GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
   #SECRET - recriar como SECRET_
-  GH_APP_TEMPLATES_ID: ${{ secrets.WF_APP_ID }}
-  GH_APP_TEMPLATES_PK: ${{ secrets.WF_APP_PRIVATE_KEY }}
+  GH_APP_TEMPLATES_ID: ${{ secrets.GH_APP_TEMPLATES_ID }}
+  GH_APP_TEMPLATES_PK: ${{ secrets.GH_APP_TEMPLATES_PK }}
   SONARQUBE_ROOT_CERT_II: ${{ secrets.SONARQUBE_ROOT_CERT_II }}
   SONARQUBE_USER: ${{ secrets.SONARQUBE_USER }}
   SONARQUBE_PASSWORD: ${{ secrets.SONARQUBE_PASSWORD }}
@@ -95,15 +95,15 @@ jobs:
       BRANCH_STABLE: ${{ steps.guardrail.outputs.BRANCH_STABLE }}
     steps:
       - name: Api Dotnet Variables
-        uses: Illusion-Factory-Labs/github-repo-templates/actions/context/dotnet-api@main
+        uses: caixasuperapp/Templates_CI_CD/actions/context/dotnet-api@main
       - name: GCM Checks - Tag
-        uses: Illusion-Factory-Labs/github-repo-templates/actions/gcm/verify-tag@main
+        uses: caixasuperapp/Templates_CI_CD/actions/gcm/verify-tag@main
       - name: GCM Checks - Branch
         if: always()
-        uses: Illusion-Factory-Labs/github-repo-templates/actions/gcm/verify-branch@main
+        uses: caixasuperapp/Templates_CI_CD/actions/gcm/verify-branch@main
       - name: Guardrail
         id: guardrail
-        uses: Illusion-Factory-Labs/github-repo-templates/actions/guardrail/branch@main
+        uses: caixasuperapp/Templates_CI_CD/actions/guardrail/branch@main
 
   Vars-Verify:
     needs: Gcm-Verify
@@ -115,16 +115,18 @@ jobs:
     environment: ${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || (matrix.AMBIENTE == 'tqs' &&  'tqs-vars' || matrix.AMBIENTE) }}
     steps:
       - name: "Api Dotnet Variables"
-        uses: Illusion-Factory-Labs/github-repo-templates/actions/context/dotnet-api@main
+        uses: caixasuperapp/Templates_CI_CD/actions/context/dotnet-api@main
       - name: "Token Create"
-        uses: Illusion-Factory-Labs/github-repo-templates/actions/auth/githubapp@main
+        uses: caixasuperapp/Templates_CI_CD/actions/auth/githubapp@main
 
       - name: "Copy GitHub repo environment vars for approval skip (if prd or tqs)"
         if: ${{ matrix.AMBIENTE == 'prd' || matrix.AMBIENTE == 'tqs' }}
-        uses: Illusion-Factory-Labs/github-repo-templates/actions/components/sync-repo-env-vars@main
+        uses: caixasuperapp/Templates_CI_CD/actions/components/sync-repo-env-vars@main
         with:
-          DRY_RUN: ${{ inputs.DRY_RUN }}
-          VARIABLES_TO_SYNC: ${{ inputs.VARIABLES_TO_SYNC }}
+          dry_run: ${{ inputs.DRY_RUN }}
+          variables: ${{ inputs.VARIABLES_TO_SYNC }}
+          source_environment: ${{ matrix.AMBIENTE }}
+          destination_environment: ${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || (matrix.AMBIENTE == 'tqs' &&  'tqs-vars') }}
 
       - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
         id: file-variable-group
