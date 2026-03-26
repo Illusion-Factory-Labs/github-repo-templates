@@ -15,7 +15,7 @@ runs:
       with:
           app-id: ${{ env.WF_APP_ID }}
           private-key: ${{ env.WF_APP_PRIVATE_KEY }}
-          owner: ${{ env.GITHUB_REPOSITORY_OWNER }}
+          owner: ${{ github.repository_owner }}
 
     - name: Exportar Token Gerado
       run: |
