@@ -13,8 +13,8 @@ runs:
       uses: actions/create-github-app-token@v2.2.1
       id: generate-token
       with:
-          app-id: ${{ env.WF_APP_ID }}
-          private-key: ${{ env.WF_APP_PRIVATE_KEY }}
+          app-id: ${{ env.GH_APP_TEMPLATES_ID }}
+          private-key: ${{ env.GH_APP_TEMPLATES_PK }}
           owner: ${{ github.repository_owner }}
 
     - name: Exportar Token Gerado
