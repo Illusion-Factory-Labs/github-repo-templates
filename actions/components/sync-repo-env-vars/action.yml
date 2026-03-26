@@ -1,4 +1,4 @@
-name: Sync GitHub REPOSITORY environment variables
+name: Sync GitHub repository environment variables
 description: >-
   Sync variables for the same repository from a source environment to a destination environment, creating or updating destination values when needed. 
   This action is useful for keeping environment variables DRY across multiple environments (e.g. dev, staging, prod) or for syncing variables 
@@ -27,11 +27,13 @@ runs:
     run: |
       set -euo pipefail
 
-      # Read action inputs.
       DRY_RUN_RAW="${{ inputs.DRY_RUN }}"
+      REPOSITORY="${{ github.repository }}"
       SRC_ENV="${{ matrix.AMBIENTE }}"
       DEST_ENV="${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || (matrix.AMBIENTE == 'tqs' &&  'tqs-vars' || matrix.AMBIENTE) }}"
       VARIABLES_TO_SYNC='${{ inputs.VARIABLES_TO_SYNC }}'
+      SRC_API_ENDPOINT="repos/$REPOSITORY/environments/$SRC_ENV/variables"
+      DEST_API_ENDPOINT="repos/$REPOSITORY/environments/$DEST_ENV/variables"
 
       if [[ "$DRY_RUN_RAW" != "true" && "$DRY_RUN_RAW" != "false" ]]; then
         echo "❌ Invalid 'DRY_RUN' value: '$DRY_RUN_RAW'. Use 'true' or 'false'."
@@ -43,7 +45,7 @@ runs:
       fi
 
       # Fetch all variables from the source environment.
-      response="$(gh api "repos/${{ inputs.REPOSITORY }}/environments/$SRC_ENV/variables")"
+      response="$(gh api "$SRC_API_ENDPOINT")"
       # Fail fast if GitHub API response is not valid JSON.
       if ! jq -e . >/dev/null 2>&1 <<< "$response"; then
         echo "❌ Failed to parse source variables response as JSON."
@@ -58,7 +60,7 @@ runs:
       done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$response")
 
       # Fetch and parse destination environment variables.
-      dest_list_response="$(gh api "repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables")"
+      dest_list_response="$(gh api "$DEST_API_ENDPOINT")"
       if ! jq -e . >/dev/null 2>&1 <<< "$dest_list_response"; then
         echo "❌ Failed to parse destination variables response as JSON."
         echo "$dest_list_response"
@@ -103,7 +105,7 @@ runs:
               echo -e "ℹ️[DRY_RUN] Would delete '$name' from '$DEST_ENV' (missing in source '$SRC_ENV').\n"
             else
               echo "ℹ️ Deleting '$name' from '$DEST_ENV' (missing in source '$SRC_ENV')."
-              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables/$name"
+              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "DEST_API_ENDPOINT/$name"
               echo -e "✅ Deleted '$name' from '$DEST_ENV'.\n"
             fi
           fi
@@ -115,7 +117,7 @@ runs:
               echo "ℹ️[DRY_RUN] Would delete '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
             else
               echo "ℹ️ Deleting '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
-              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables/$name"
+              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "DEST_API_ENDPOINT/$name"
               echo -e "✅ Deleted '$name' from '$DEST_ENV'.\n"
             fi
           fi
@@ -143,7 +145,7 @@ runs:
         fi
 
         value="${SOURCE_VARS[$name]}"
-        if dest_response="$(gh api "repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables/$name" 2>/dev/null)"; then
+        if dest_response="$(gh api "DEST_API_ENDPOINT/$name" 2>/dev/null)"; then
           dest_value="$(jq -r '.value // empty' <<< "$dest_response")"
 
           if [[ "$dest_value" == "$value" ]]; then
@@ -152,7 +154,7 @@ runs:
             echo "ℹ️[DRY_RUN] Would update '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
           else
             echo "ℹ️ Updating '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
-            gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables/$name" -f name="$name" -f value="$value"
+            gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "DEST_API_ENDPOINT/$name" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
             echo -e "✅ Updated '$name' and exported to GITHUB_ENV.\n"
           fi
@@ -161,7 +163,7 @@ runs:
             echo "ℹ️[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'."
           else
             echo "ℹ️ Creating '$name' from '$SRC_ENV' to '$DEST_ENV'."
-            gh api --silent --method POST -H 'Accept: application/vnd.github+json' "repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables" -f name="$name" -f value="$value"
+            gh api --silent --method POST -H 'Accept: application/vnd.github+json' "DEST_API_ENDPOINT" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
             echo -e "✅ Created '$name' and exported to GITHUB_ENV.\n"
           fi
