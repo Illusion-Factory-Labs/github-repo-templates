@@ -123,8 +123,8 @@ jobs:
         if: ${{ matrix.AMBIENTE == 'prd' || matrix.AMBIENTE == 'tqs' }}
         uses: Illusion-Factory-Labs/github-repo-templates/actions/components/sync-repo-env-vars@main
         with:
-          dry_run: ${{ inputs.DRY_RUN }}
-          variables: ${{ inputs.VARIABLES_TO_SYNC }}
+          DRY_RUN: ${{ inputs.DRY_RUN }}
+          VARIABLES_TO_SYNC: ${{ inputs.VARIABLES_TO_SYNC }}
 
       # - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
       #   id: file-variable-group
