@@ -202,21 +202,13 @@ runs:
         fi
       done
 
-      if [[ ${#CREATED_VARS[@]} -gt 0 ]]; then
-        created_variables_json="$(printf '%s\n' "${CREATED_VARS[@]}" | jq -R . | jq -cs .)"
-      else
-        created_variables_json='[]'
+      # Always emit a valid JSON array for action output.
+      changed_variables_json='[]'
+      if [[ ${#CREATED_VARS[@]} -gt 0 || ${#UPDATED_VARS[@]} -gt 0 ]]; then
+        changed_variables_json="$(printf '%s\n' "${CREATED_VARS[@]}" "${UPDATED_VARS[@]}" | jq -Rsc 'split("\n") | map(select(length > 0))')"
       fi
 
-      if [[ ${#UPDATED_VARS[@]} -gt 0 ]]; then
-        updated_variables_json="$(printf '%s\n' "${UPDATED_VARS[@]}" | jq -R . | jq -cs .)"
-      else
-        updated_variables_json='[]'
-      fi
-
-      changed_variables_json="$(jq -cn --argjson created "$created_variables_json" --argjson updated "$updated_variables_json" '$created + $updated')"
-
-      if [[ ${changed_variables_json} == '[]' ]]; then
+      if [[ "$changed_variables_json" == '[]' ]]; then
         echo "⚠️ Nenhuma variável foi criada ou atualizada em '$DEST_ENV'."
       else
         echo "✅ Variáveis criadas ou atualizadas em '$DEST_ENV': $changed_variables_json"
