@@ -110,11 +110,11 @@ runs:
         for name in "${!DEST_VARS[@]}"; do
           if [[ -z "${SOURCE_VARS[$name]+x}" ]]; then
             if [[ "$DRY_RUN_RAW" == "true" ]]; then
-              echo "[DRY_RUN] Would delete '$name' from '$DEST_ENV' (missing in source '$SRC_ENV')."
+              echo -e "ℹ️[DRY_RUN] Would delete '$name' from '$DEST_ENV' (missing in source '$SRC_ENV').\n"
             else
               echo "ℹ️ Deleting '$name' from '$DEST_ENV' (missing in source '$SRC_ENV')."
               gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables/$name"
-              echo "✅ Deleted '$name' from '$DEST_ENV'."
+              echo -e "✅ Deleted '$name' from '$DEST_ENV'.\n"
             fi
           fi
         done
@@ -122,11 +122,11 @@ runs:
         for name in "${NAMES_TO_COPY[@]}"; do
           if [[ -n "${DEST_VARS[$name]+x}" && -z "${SOURCE_VARS[$name]+x}" ]]; then
             if [[ "$DRY_RUN_RAW" == "true" ]]; then
-              echo "[DRY_RUN] Would delete '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
+              echo "ℹ️[DRY_RUN] Would delete '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
             else
               echo "ℹ️ Deleting '$name' from '$DEST_ENV' (selected but missing in source '$SRC_ENV')."
               gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables/$name"
-              echo "✅ Deleted '$name' from '$DEST_ENV'."
+              echo -e "✅ Deleted '$name' from '$DEST_ENV'.\n"
             fi
           fi
         done
@@ -159,21 +159,21 @@ runs:
           if [[ "$dest_value" == "$value" ]]; then
             echo "⚠️ '$name' already exists in '$DEST_ENV' with the same value. Skipping update."
           elif [[ "$DRY_RUN_RAW" == "true" ]]; then
-            echo "[DRY_RUN] Would update '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
+            echo "ℹ️[DRY_RUN] Would update '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
           else
             echo "ℹ️ Updating '$name' in '$DEST_ENV' (value differs from source '$SRC_ENV')."
             gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables/$name" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
-            echo "✅ Updated '$name' and exported to GITHUB_ENV."
+            echo -e "✅ Updated '$name' and exported to GITHUB_ENV.\n"
           fi
         else
           if [[ "$DRY_RUN_RAW" == "true" ]]; then
-            echo "[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'."
+            echo "ℹ️[DRY_RUN] Would copy '$name' from '$SRC_ENV' to '$DEST_ENV'."
           else
             echo "ℹ️ Creating '$name' from '$SRC_ENV' to '$DEST_ENV'."
             gh api --silent --method POST -H 'Accept: application/vnd.github+json' "repos/${{ inputs.repository }}/environments/$DEST_ENV/variables" -f name="$name" -f value="$value"
             export_to_github_env "$name" "$value"
-            echo "✅ Created '$name' and exported to GITHUB_ENV."
+            echo -e "✅ Created '$name' and exported to GITHUB_ENV.\n"
           fi
         fi
       done
