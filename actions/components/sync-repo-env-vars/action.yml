@@ -35,6 +35,14 @@ runs:
       SRC_API_ENDPOINT="repos/$REPOSITORY/environments/$SRC_ENV/variables"
       DEST_API_ENDPOINT="repos/$REPOSITORY/environments/$DEST_ENV/variables"
 
+      echo "$$DRY_RUN_RAW"
+      echo "$REPOSITORY"
+      echo "$SRC_ENV"
+      echo "$DEST_ENV"
+      echo "$VARIABLES_TO_SYNC"
+      echo "$SRC_API_ENDPOINT"
+      echo "$DEST_API_ENDPOINT"
+
       if [[ "$DRY_RUN_RAW" != "true" && "$DRY_RUN_RAW" != "false" ]]; then
         echo "❌ Invalid 'DRY_RUN' value: '$DRY_RUN_RAW'. Use 'true' or 'false'."
         exit 1

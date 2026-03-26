@@ -125,8 +125,6 @@ jobs:
         with:
           dry_run: ${{ inputs.DRY_RUN }}
           variables: ${{ inputs.VARIABLES_TO_SYNC }}
-          source_environment: ${{ matrix.AMBIENTE }}
-          destination_environment: ${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || (matrix.AMBIENTE == 'tqs' &&  'tqs-vars') }}
 
       # - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
       #   id: file-variable-group
