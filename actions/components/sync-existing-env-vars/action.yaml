@@ -37,7 +37,7 @@ inputs:
       manter o ambiente. Por padrão, depois da exportacão das variáveis para o GITHUB_ENV, o ambiente de destino será 
       excluido.
     required: false
-    default: "true"
+    default: 'true'
 
 runs:
   using: "composite"
@@ -248,6 +248,6 @@ runs:
       if [[ "$DRY_RUN_RAW" == "true" ]]; then
         echo "[DRY_RUN] O ambiente '$DEST_ENV' seria excluído."
       else
-        gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"
+        gh api --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"
         echo "✅ Ambiente '$DEST_ENV' excluído com sucesso."
       fi
