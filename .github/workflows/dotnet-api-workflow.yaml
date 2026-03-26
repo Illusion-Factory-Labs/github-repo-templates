@@ -115,13 +115,13 @@ jobs:
     environment: ${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || (matrix.AMBIENTE == 'tqs' &&  'tqs-vars' || matrix.AMBIENTE) }}
     steps:
       - name: "Api Dotnet Variables"
-        uses: caixasuperapp/Templates_CI_CD/actions/context/dotnet-api@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/context/dotnet-api@main
       - name: "Token Create"
-        uses: caixasuperapp/Templates_CI_CD/actions/auth/githubapp@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/auth/githubapp@main
 
       - name: "Copy GitHub repo environment vars for approval skip (if prd or tqs)"
         if: ${{ matrix.AMBIENTE == 'prd' || matrix.AMBIENTE == 'tqs' }}
-        uses: caixasuperapp/Templates_CI_CD/actions/components/sync-repo-env-vars@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/components/sync-repo-env-vars@main
         with:
           dry_run: ${{ inputs.DRY_RUN }}
           variables: ${{ inputs.VARIABLES_TO_SYNC }}
