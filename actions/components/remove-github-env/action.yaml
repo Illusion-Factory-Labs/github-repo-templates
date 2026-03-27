@@ -8,12 +8,8 @@ inputs:
     description: "O repositório GitHub no formato 'owner/repo'. Padrão é o repositório atual."
     required: false
     default: "${{ github.repository }}"
-  SRC_ENV:
-    description: "O nome do ambiente de origem do repositório GitHub para sincronizar variáveis."
-    required: false
-    default: "${{ matrix.AMBIENTE }}"
   DEST_ENV:
-    description: "O nome do ambiente de destino do repositório GitHub para sincronizar variáveis."
+    description: "O nome do ambiente do repositório GitHub que deve ser excluído."
     required: false
     default: "${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || matrix.AMBIENTE == 'tqs' && 'tqs-vars' }}"
 
@@ -28,9 +24,24 @@ runs:
       set -euo pipefail
 
       DEST_ENV="${{ inputs.DEST_ENV }}"
-      DEST_ENV_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV"
+      ENVIRONMENTS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments"
+      ENCODED_DEST_ENV="$(jq -rn --arg value "$DEST_ENV" '$value|@uri')"
+      DEST_ENV_API_ENDPOINT="$ENVIRONMENTS_API_ENDPOINT/$ENCODED_DEST_ENV"
+
+      echo "ℹ️ Validando se o ambiente '$DEST_ENV' existe no repositório '${{ inputs.REPOSITORY }}'..."
+      environments_response="$(gh api "$ENVIRONMENTS_API_ENDPOINT")"
+
+      if ! jq -e --arg env "$DEST_ENV" 'any((.environments // [])[]; .name == $env)' >/dev/null <<< "$environments_response"; then
+        echo "⚠️ Ambiente '$DEST_ENV' não encontrado no repositório '${{ inputs.REPOSITORY }}'. Nada para excluir."
+        exit 0
+      fi
 
       echo "ℹ️ Excluindo ambiente '$DEST_ENV'..."
-      gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"
+      if ! gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"; then
+        echo "❌ Falha ao excluir o ambiente '$DEST_ENV'."
+        echo "Verifique se o token GitHub App tem permissão de repositório 'Administration: write', exigida pela API de exclusão de environments."
+        exit 1
+      fi
+
       echo "✅ Ambiente '$DEST_ENV' excluído com sucesso."
       
