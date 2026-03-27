@@ -8,40 +8,64 @@ inputs:
     description: "O repositório GitHub no formato 'owner/repo'. Padrão é o repositório atual."
     required: false
     default: "${{ github.repository }}"
-  DEST_ENV:
-    description: "O nome do ambiente do repositório GitHub que deve ser excluído."
+  ENVS_TO_EXCLUDE:
+    description: >-
+      Lista de ambientes a serem excluídos. Formato: array JSON (ex. [\"prd-vars\", \"tqs-vars\"]) ou string separada por vírgulas 
+      (ex. prd-vars,tqs-vars)."
     required: false
-    default: "${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || matrix.AMBIENTE == 'tqs' && 'tqs-vars' }}"
+    default: '[prd-vars,tqs-vars]'
 
 runs:
   using: "composite"
   steps:
-  - name: "Excluir ambiente de destino ${{ inputs.DEST_ENV }}"
+  - name: "Excluir ambientes de destino"
     shell: bash
     env:
       GH_TOKEN: ${{ env.GHTOKEN }}
     run: |
       set -euo pipefail
 
-      DEST_ENV="${{ inputs.DEST_ENV }}"
+      ENVS_TO_EXCLUDE='${{ inputs.ENVS_TO_EXCLUDE }}'
       ENVIRONMENTS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments"
-      ENCODED_DEST_ENV="$(jq -rn --arg value "$DEST_ENV" '$value|@uri')"
-      DEST_ENV_API_ENDPOINT="$ENVIRONMENTS_API_ENDPOINT/$ENCODED_DEST_ENV"
 
-      echo "ℹ️ Validando se o ambiente '$DEST_ENV' existe no repositório '${{ inputs.REPOSITORY }}'..."
+      declare -a ENV_NAMES=()
+      if [[ -z "$ENVS_TO_EXCLUDE" || "$ENVS_TO_EXCLUDE" == "[]" ]]; then
+        echo "⚠️ Nenhum ambiente foi informado em ENVS_TO_EXCLUDE. Nada para excluir."
+        exit 0
+      elif jq -e . >/dev/null 2>&1 <<< "$ENVS_TO_EXCLUDE" && jq -e 'type == "array"' >/dev/null 2>&1 <<< "$ENVS_TO_EXCLUDE"; then
+        while IFS= read -r env_name; do
+          [[ -z "$env_name" ]] && continue
+          ENV_NAMES+=("$env_name")
+        done < <(jq -r '.[]' <<< "$ENVS_TO_EXCLUDE")
+      else
+        while IFS= read -r env_name; do
+          env_name="${env_name## }"
+          env_name="${env_name%% }"
+          [[ -z "$env_name" ]] && continue
+          ENV_NAMES+=("$env_name")
+        done < <(tr ',' '\n' <<< "$ENVS_TO_EXCLUDE")
+      fi
+
       environments_response="$(gh api "$ENVIRONMENTS_API_ENDPOINT")"
 
-      if ! jq -e --arg env "$DEST_ENV" 'any((.environments // [])[]; .name == $env)' >/dev/null <<< "$environments_response"; then
-        echo "⚠️ Ambiente '$DEST_ENV' não encontrado no repositório '${{ inputs.REPOSITORY }}'. Nada para excluir."
-        exit 0
-      fi
+      for DEST_ENV in "${ENV_NAMES[@]}"; do
+        ENCODED_DEST_ENV="$(jq -rn --arg value "$DEST_ENV" '$value|@uri')"
+        DEST_ENV_API_ENDPOINT="$ENVIRONMENTS_API_ENDPOINT/$ENCODED_DEST_ENV"
 
-      echo "ℹ️ Excluindo ambiente '$DEST_ENV'..."
-      if ! gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"; then
-        echo "❌ Falha ao excluir o ambiente '$DEST_ENV'."
-        echo "Verifique se o token GitHub App tem permissão de repositório 'Administration: write', exigida pela API de exclusão de environments."
-        exit 1
-      fi
+        echo "ℹ️ Validando se o ambiente '$DEST_ENV' existe no repositório '${{ inputs.REPOSITORY }}'..."
 
-      echo "✅ Ambiente '$DEST_ENV' excluído com sucesso."
+        if ! jq -e --arg env "$DEST_ENV" 'any((.environments // [])[]; .name == $env)' >/dev/null <<< "$environments_response"; then
+          echo "⚠️ Ambiente '$DEST_ENV' não encontrado no repositório '${{ inputs.REPOSITORY }}'. Nada para excluir."
+          continue
+        fi
+
+        echo "ℹ️ Excluindo ambiente '$DEST_ENV'..."
+        if ! gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"; then
+          echo "❌ Falha ao excluir o ambiente '$DEST_ENV'."
+          echo "Verifique se o token GitHub App tem permissão de repositório 'Administration: write', exigida pela API de exclusão de environments."
+          exit 1
+        fi
+
+        echo "✅ Ambiente '$DEST_ENV' excluído com sucesso."
+      done
       
