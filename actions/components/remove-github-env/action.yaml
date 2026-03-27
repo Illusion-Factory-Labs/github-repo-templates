@@ -4,12 +4,6 @@ description: >-
   associadas a ele.
 
 inputs:
-  DRY_RUN:
-    description: >-
-      Flag de modo dry-run (principalmente usado para testes). Use 'true' para somente registrar as ações que seriam tomadas sem 
-      realmente criar, atualizar ou excluir variáveis, ou 'false' para aplicar alterações.
-    required: false
-    default: "false"
   REPOSITORY:
     description: "O repositório GitHub no formato 'owner/repo'. Padrão é o repositório atual."
     required: false
@@ -33,14 +27,10 @@ runs:
     run: |
       set -euo pipefail
 
-      DRY_RUN_RAW="${{ inputs.DRY_RUN }}"
       DEST_ENV="${{ inputs.DEST_ENV }}"
       DEST_ENV_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV"
 
-      if [[ "$DRY_RUN_RAW" == "true" ]]; then
-        echo "[DRY_RUN] O ambiente '$DEST_ENV' seria excluído."
-      else
-        echo "ℹ️ Excluindo ambiente '$DEST_ENV'..."
-        gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"
-        echo "✅ Ambiente '$DEST_ENV' excluído com sucesso."
-      fi
+      echo "ℹ️ Excluindo ambiente '$DEST_ENV'..."
+      gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"
+      echo "✅ Ambiente '$DEST_ENV' excluído com sucesso."
+      
