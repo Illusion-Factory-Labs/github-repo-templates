@@ -255,23 +255,3 @@ runs:
       done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$dest_list_response")
 
       echo -e "\n✅  processo de exportação das variáveis de '$DEST_ENV' para GITHUB_ENV foi concluído.\n"
-
-  - name: "Excluir ambiente de destino ${{ inputs.DEST_ENV }}"
-    if: ${{ inputs.DEL_ENV == 'true' }}
-    shell: bash
-    env:
-      GH_TOKEN: ${{ env.GHTOKEN }}
-    run: |
-      set -euo pipefail
-
-      DRY_RUN_RAW="${{ inputs.DRY_RUN }}"
-      DEST_ENV="${{ inputs.DEST_ENV }}"
-      DEST_ENV_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV"
-
-      if [[ "$DRY_RUN_RAW" == "true" ]]; then
-        echo "[DRY_RUN] O ambiente '$DEST_ENV' seria excluído."
-      else
-        echo "ℹ️ Excluindo ambiente '$DEST_ENV'..."
-        gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"
-        echo "✅ Ambiente '$DEST_ENV' excluído com sucesso."
-      fi
