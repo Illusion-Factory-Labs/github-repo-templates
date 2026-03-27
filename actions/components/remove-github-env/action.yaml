@@ -66,6 +66,6 @@ runs:
           exit 1
         fi
 
-        echo "✅ Ambiente '$DEST_ENV' excluído com sucesso."
+        echo -e "✅ Ambiente '$DEST_ENV' excluído com sucesso.\n"
       done
       
