@@ -68,7 +68,7 @@ runs:
       fi
 
       # Buscar e analisar as variáveis de ambiente de origem.
-      response="$(gh api "$SRC_VARS_API_ENDPOINT")"
+      response="$(gh api "$SRC_VARS_API_ENDPOINT" --paginate -f per_page=100)"
 
       # Validar e falhar rapidamente se a resposta da API do GitHub não for um JSON válido.
       if ! jq -e . >/dev/null 2>&1 <<< "$response"; then
@@ -84,7 +84,7 @@ runs:
       done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$response")
 
       # Buscar e analisar as variáveis de ambiente de destino.
-      dest_list_response="$(gh api "$DEST_VARS_API_ENDPOINT")"
+      dest_list_response="$(gh api "$DEST_VARS_API_ENDPOINT" --paginate -f per_page=100)"
       if ! jq -e . >/dev/null 2>&1 <<< "$dest_list_response"; then
         echo "❌ Falha ao analisar a resposta das variáveis de destino como JSON."
         echo "$dest_list_response"
@@ -131,7 +131,7 @@ runs:
               echo "[DRY_RUN] A variável '$name' seria apagada de '$DEST_ENV' (ausente na origem '$SRC_ENV')."
             else
               echo "ℹ️ Apagando a variável '$name' de '$DEST_ENV' (ausente no ambiente original '$SRC_ENV')."
-              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name"
+              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name" --paginate -f per_page=100
               echo -e "✅ Variável '$name' apagada de '$DEST_ENV' com sucesso!\n"
             fi
           fi
@@ -143,7 +143,7 @@ runs:
               echo "[DRY_RUN] A variável '$name' seria apagada de '$DEST_ENV' (selecionada mas ausente na origem '$SRC_ENV')."
             else
               echo "ℹ️ Apagando a variável '$name' de '$DEST_ENV' (selecionada mas ausente no ambiente original '$SRC_ENV')."
-              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name"
+              gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name" --paginate -f per_page=100
               echo -e "✅ Variável '$name' apagada de '$DEST_ENV' com sucesso!\n"
             fi
           fi
@@ -159,7 +159,7 @@ runs:
         fi
 
         value="${SOURCE_VARS[$name]}"
-        if dest_response="$(gh api "$DEST_VARS_API_ENDPOINT/$name" 2>/dev/null)"; then
+        if dest_response="$(gh api "$DEST_VARS_API_ENDPOINT/$name" --paginate -f per_page=100 2>/dev/null)"; then
           dest_value="$(jq -r '.value // empty' <<< "$dest_response")"
 
           if [[ "$dest_value" == "$value" ]]; then
@@ -168,7 +168,7 @@ runs:
                 echo "[DRY_RUN] A variável '$name' seria atualizada em '$DEST_ENV' (valor difere da origem '$SRC_ENV')."
           else
             echo "ℹ️ Atualizando a variável '$name' em '$DEST_ENV' (valor difere da origem '$SRC_ENV')."
-            gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name" -f name="$name" -f value="$value"
+            gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name" --paginate -f per_page=100 -f name="$name" -f value="$value"
             UPDATED_VARS+=("$name")
             echo "✅ Variável '$name' atualizada em '$DEST_ENV' com sucesso."
           fi
@@ -177,7 +177,7 @@ runs:
             echo "[DRY_RUN] A variável '$name' seria copiada de '$SRC_ENV' para '$DEST_ENV'."
           else
             echo "ℹ️ Criando a variável '$name' de '$SRC_ENV' para '$DEST_ENV'."
-            gh api --silent --method POST -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT" -f name="$name" -f value="$value"
+            gh api --silent --method POST -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT" --paginate -f per_page=100 -f name="$name" -f value="$value"
             CREATED_VARS+=("$name")
             echo "✅ Variável '$name' criada em '$DEST_ENV' com sucesso."
           fi
@@ -211,7 +211,7 @@ runs:
       DEST_VARS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables"
 
       # Buscar as variáveis de ambiente de destino novamente para garantir que o estado mais recente após a sincronização.
-      dest_list_response="$(gh api "$DEST_VARS_API_ENDPOINT")"
+      dest_list_response="$(gh api "$DEST_VARS_API_ENDPOINT" --paginate -f per_page=100)"
       if ! jq -e . >/dev/null 2>&1 <<< "$dest_list_response"; then
         echo "❌ Falha ao analisar a resposta das variáveis de destino como JSON."
         echo "$dest_list_response"
