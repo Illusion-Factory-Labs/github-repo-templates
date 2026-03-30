@@ -8,7 +8,7 @@ inputs:
     description: 'Se definido como "true", a ação simulará a exclusão dos ambientes, listando quais ambientes seriam excluídos sem realmente removê-los.'
     required: false
     type: choice
-    default: 'true'
+    default: 'false'
     options:
       - 'true'
       - 'false'
