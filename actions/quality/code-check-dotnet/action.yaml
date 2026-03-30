@@ -1,0 +1,29 @@
+name: 'code-check-dotnet'
+description: 'Validar UsePathBase no Program.cs para nao dar erro no Health-Check do AKS'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validar UsePathBase no Program.cs
+      shell: bash
+      run: |
+        set -e
+        
+        echo "🔍 Validando UsePathBase no Program.cs..."
+        
+        PROGRAM_CS="api/${GLOBAL_REPO_NAME}/Program.cs"
+        EXPECTED="/${GLOBAL_PROJECT_GROUP}-${GLOBAL_PROJECT_MODULE}"
+        
+        [ ! -f "${PROGRAM_CS}" ] && echo "❌ Arquivo ${PROGRAM_CS} não encontrado" && exit 1
+        
+        # Regex estruturada: UsePathBase("<conteudo>")
+        FOUND=$(grep -oP 'UsePathBase\s*\(\s*["\x27]\K[^"\x27]+(?=["\x27]\s*\))' "${PROGRAM_CS}" || echo "")
+
+        [ -z "${FOUND}" ] && echo "❌ UsePathBase não encontrado em ${PROGRAM_CS}" && exit 1
+        
+        if [ "${FOUND}" != "${EXPECTED}" ]; then
+          echo "❌ UsePathBase(\"${FOUND}\") ≠ esperado \"${EXPECTED}\""
+          exit 1
+        fi
+        
+        echo "✅ UsePathBase(\"${FOUND}\") está correto"

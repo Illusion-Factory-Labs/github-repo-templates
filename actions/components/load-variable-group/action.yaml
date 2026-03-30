@@ -1,0 +1,33 @@
+name: Load Environment Variables (Carrega variáveis de ambiente)
+description: "Carrega variáveis globais de git files para qualquer Service/API/MFE/RN/Lib .NET/JS."
+
+inputs:
+  VARS_FILE:
+    description: "Variáveis globais de git files"
+    required: true
+  VARS_CONTEXT:
+    description: "Variáveis de ambiente para o contexto atual"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Exportar variáveis de ambiente"
+      run: |
+        export_vars() {
+          local JSON_VARS="$1"
+          local ORIGEM="$2"
+          if [[ -z "$JSON_VARS" || "$JSON_VARS" == "{}" ]]; then
+            echo "::warning title=📝 VARIÁVEIS NÃO ENCONTRADAS::Nenhuma variável de ambiente encontrada em $ORIGEM para carregar."
+          else
+            VARS_TO_EXPORT=$(echo "$JSON_VARS" | jq -r 'to_entries[] | "\(.key)=\(.value)"')
+            echo "$VARS_TO_EXPORT" >> $GITHUB_ENV
+            echo "✅ Variáveis de $ORIGEM carregadas no ambiente:"
+            echo "$VARS_TO_EXPORT"
+            echo "::notice title=📝 VARIÁVEIS CARREGADAS::Variáveis de $ORIGEM carregadas no ambiente."
+          fi
+        }
+
+        export_vars '${{ inputs.VARS_FILE }}' "git files"
+        export_vars '${{ inputs.VARS_CONTEXT }}' "contexto"
+      shell: bash

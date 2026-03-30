@@ -1,0 +1,101 @@
+name: create configmap.yaml from appsettings.json
+description: Converts appsettings.json to configmap.json with placeholders
+
+runs:
+  using: "composite"
+  steps:
+    - name: "🛒 Checkout do Código do Projeto (Contexto do Pipeline)"
+      uses: actions/checkout@v5
+      with:
+        path: api
+        clean: true
+
+    - name: Checkout K8s Files
+      uses: actions/checkout@v5
+      with:
+        repository: caixasuperapp/Templates_CI_CD
+        ref: main
+        path: templates
+        token: ${{ env.GHTOKEN }}
+        clean: true
+
+    - name: appsettings.json to configmap.json
+      run: |
+        jq '
+          def pathString:
+            map(
+              if type == "string" then
+                gsub("\\.|\\[|\\]|-";"") | ascii_upcase
+              else
+                tostring
+              end
+            ) | join("");
+
+          def walk_paths(path):
+            . as $in
+            | if type == "object" then
+                reduce keys[] as $k (
+                  {};
+                  . + { ($k): ($in[$k] | walk_paths(path + [$k])) }
+                )
+              elif type == "string" then
+                "\"#{" + (path | pathString) + "}#\""
+              else
+                "#{" + (path | pathString) + "}#"
+              end;
+
+          walk_paths([])
+        ' "api/${{ env.GLOBAL_REPO_NAME }}/appsettings.json" \
+        | sed -E 's/"#\{([A-Za-z0-9]+)\}#"/#{\1}#/g' \
+        | sed -E 's/\\"#\{/#{/g' | sed -E 's/\}#\\"/}#/g' > "api/k8s/configmap.json"
+      shell: bash
+
+    - name: Export configmap.json content to environment variable (catalog)
+      run: |
+        # Processa o appsettings.json original (válido) e gera o formato flat
+        CONFIGMAP_CONTENT=$(jq -r '
+          def pathString:
+            map(
+              if type == "string" then
+                gsub("\\.|\\[|\\]|-";"") | ascii_upcase
+              else
+                tostring
+              end
+            ) | join("");
+
+          def walk_paths(path):
+            . as $in
+            | if type == "object" then
+                reduce keys[] as $k (
+                  [];
+                  . + ($in[$k] | walk_paths(path + [$k]))
+                )
+              elif type == "array" then
+                ["\"" + (path | pathString) + "\": " + (. | tostring)]
+              elif type == "number" then
+                ["\"" + (path | pathString) + "\": #{" + (path | pathString) + "}#"]
+              else
+                ["\"" + (path | pathString) + "\": \"#{" + (path | pathString) + "}#\""]
+              end;
+
+          walk_paths([]) | join(",\n")
+        ' "api/${{ env.GLOBAL_REPO_NAME }}/appsettings.json")
+        
+        echo "CONFIGMAP<<EOF" >> $GITHUB_ENV
+        echo "$CONFIGMAP_CONTENT" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+      shell: bash
+
+    - uses: azure/setup-kubectl@v4
+
+    - name: 'Create configmap YAML from configmap.json'
+      env:
+        OUTPUT_CONFIGMAPVALUES: api/k8s/configmap.json
+      run: |
+        kubectl create configmap ${GLOBAL_PROJECT_MODULE}-config \
+        --from-file=appsettings.json=${OUTPUT_CONFIGMAPVALUES} -n ${GLOBAL_PROJECT_GROUP} \
+        --dry-run=client -o yaml > ${OUTPUT_CONFIGMAPVALUES/json/yaml}
+        cat ${OUTPUT_CONFIGMAPVALUES/json/yaml}
+        rm ${OUTPUT_CONFIGMAPVALUES}
+      shell: bash
+

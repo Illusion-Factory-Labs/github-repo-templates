@@ -1,0 +1,89 @@
+name: Project Api Dotnet Variables
+description: "Exporta variáveis de ambiente para projetos API .NET"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Importar Variáveis Globais
+      uses: caixasuperapp/Templates_CI_CD/actions/context/global@main
+
+    - name: Exportar Variáveis de Ambiente do Projeto
+      run: |
+        set -euo pipefail
+
+        CATALOG_TYPE="api"
+
+        echo "📦 ===== [VARIÁVEIS DE PROJETO] Exportando as seguintes variáveis: ====="
+
+        echo "  - BUILD_VERSION: $BUILD_VERSION"
+        echo "  - DOTNET_VERSION: $DOTNET_VERSION"
+        echo "  - ADV_SEC_LANG: $ADV_SEC_LANG"
+        echo "  - AMBIENTE: ${{ matrix.AMBIENTE }}"
+        echo "  - CATALOG_TYPE: $CATALOG_TYPE"
+
+        echo "BUILD_VERSION=$BUILD_VERSION" >> "$GITHUB_ENV"
+        echo "DOTNET_VERSION=$DOTNET_VERSION" >> "$GITHUB_ENV"
+        echo "ADV_SEC_LANG=$ADV_SEC_LANG" >> "$GITHUB_ENV"
+        echo "AMBIENTE=${{ matrix.AMBIENTE }}" >> "$GITHUB_ENV"
+        echo "CATALOG_TYPE=$CATALOG_TYPE" >> "$GITHUB_ENV"
+
+        echo "✅ ===== [VARIÁVEIS DE PROJETO] Variáveis exportadas com sucesso para o ambiente. ====="
+
+        echo ""
+        echo "🔎 ===== [K8S/TRACE] Coletando variáveis de rastreabilidade (GitHub Actions -> annotations) ====="
+
+        # ===== DEFINE VARS (TUDO_MAIÚSCULO) =====
+        KUBERNETES_JOB_NAME="${GITHUB_JOB}"
+
+        # Reuso do contexto global
+        KUBERNETES_PROJECT="${GLOBAL_OWNER_NAME}"
+        KUBERNETES_RUN="${GLOBAL_BUILD_ID}"
+        KUBERNETES_RUN_NUMBER="${GLOBAL_RUN_NUMBER}"
+        KUBERNETES_REPOSITORY="${GLOBAL_REPO_NAME}"
+        KUBERNETES_COMMIT_ID="${GLOBAL_FULL_SHA}"
+        KUBERNETES_BRANCH="${GLOBAL_CURRENT_BRANCH}"
+        KUBERNETES_REVISION="${GLOBAL_BUILD_ID}"
+        KUBERNETES_REQUESTED_FOR="${GLOBAL_GITHUB_ACTOR}"
+
+        # URLs (montadas a partir do padrão GitHub)
+        KUBERNETES_ORG="${GITHUB_SERVER_URL}/${GLOBAL_OWNER_NAME}"
+        KUBERNETES_RUN_URI="${GITHUB_SERVER_URL}/${GLOBAL_GITHUB_ORG_REPO}/actions/runs/${GLOBAL_BUILD_ID}"
+        KUBERNETES_COMMIT_URL="${GITHUB_SERVER_URL}/${GLOBAL_GITHUB_ORG_REPO}/commit/${GLOBAL_FULL_SHA}"
+
+        # Workflow info (não está no global)
+        KUBERNETES_PIPELINE="${GITHUB_WORKFLOW}"
+        KUBERNETES_PIPELINE_ID="${GITHUB_WORKFLOW_REF}"  # referência do workflow (não é numérico)
+
+        echo "📦 ===== [K8S/TRACE] Variáveis coletadas: ====="
+        echo "  - KUBERNETES_JOB_NAME: $KUBERNETES_JOB_NAME"
+        echo "  - KUBERNETES_ORG: $KUBERNETES_ORG"
+        echo "  - KUBERNETES_PIPELINE: $KUBERNETES_PIPELINE"
+        echo "  - KUBERNETES_PIPELINE_ID: $KUBERNETES_PIPELINE_ID"
+        echo "  - KUBERNETES_PROJECT: $KUBERNETES_PROJECT"
+        echo "  - KUBERNETES_RUN: $KUBERNETES_RUN"
+        echo "  - KUBERNETES_RUN_NUMBER: $KUBERNETES_RUN_NUMBER"
+        echo "  - KUBERNETES_RUN_URI: $KUBERNETES_RUN_URI"
+        echo "  - KUBERNETES_REPOSITORY: $KUBERNETES_REPOSITORY"
+        echo "  - KUBERNETES_COMMIT_ID: $KUBERNETES_COMMIT_ID"
+        echo "  - KUBERNETES_COMMIT_URL: $KUBERNETES_COMMIT_URL"
+        echo "  - KUBERNETES_BRANCH: $KUBERNETES_BRANCH"
+        echo "  - KUBERNETES_REVISION: $KUBERNETES_REVISION"
+        echo "  - KUBERNETES_REQUESTED_FOR: $KUBERNETES_REQUESTED_FOR"
+
+        echo "KUBERNETES_JOB_NAME=$KUBERNETES_JOB_NAME" >> "$GITHUB_ENV"
+        echo "KUBERNETES_ORG=$KUBERNETES_ORG" >> "$GITHUB_ENV"
+        echo "KUBERNETES_PIPELINE=$KUBERNETES_PIPELINE" >> "$GITHUB_ENV"
+        echo "KUBERNETES_PIPELINE_ID=$KUBERNETES_PIPELINE_ID" >> "$GITHUB_ENV"
+        echo "KUBERNETES_PROJECT=$KUBERNETES_PROJECT" >> "$GITHUB_ENV"
+        echo "KUBERNETES_RUN=$KUBERNETES_RUN" >> "$GITHUB_ENV"
+        echo "KUBERNETES_RUN_NUMBER=$KUBERNETES_RUN_NUMBER" >> "$GITHUB_ENV"
+        echo "KUBERNETES_RUN_URI=$KUBERNETES_RUN_URI" >> "$GITHUB_ENV"
+        echo "KUBERNETES_REPOSITORY=$KUBERNETES_REPOSITORY" >> "$GITHUB_ENV"
+        echo "KUBERNETES_COMMIT_ID=$KUBERNETES_COMMIT_ID" >> "$GITHUB_ENV"
+        echo "KUBERNETES_COMMIT_URL=$KUBERNETES_COMMIT_URL" >> "$GITHUB_ENV"
+        echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH" >> "$GITHUB_ENV"
+        echo "KUBERNETES_REVISION=$KUBERNETES_REVISION" >> "$GITHUB_ENV"
+        echo "KUBERNETES_REQUESTED_FOR=$KUBERNETES_REQUESTED_FOR" >> "$GITHUB_ENV"
+
+        echo "✅ ===== [K8S/TRACE] Variáveis exportadas com sucesso para o ambiente. ====="
+      shell: bash

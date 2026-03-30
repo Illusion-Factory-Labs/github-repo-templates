@@ -1,0 +1,177 @@
+name: Replace Tokens
+description: 'Substitui tokens no formato #{VAR}# (ou conforme prefix/suffix) por variáveis de ambiente presentes no runner.'
+
+inputs:
+  TOKEN_PREFIX:
+    description: 'Prefixo do token (ex: #{)'
+    required: true
+    default: '#{'
+  TOKEN_SUFFIX:
+    description: 'Sufixo do token (ex: }#)'
+    required: true
+    default: '}#'
+  FILES:
+    description: 'Padrão (glob) dos arquivos alvo. Pode usar múltiplos separados por espaço.'
+    required: true
+    default: "./**/k8s/*.yaml"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Replace Tokens In Files
+      env:
+        TOKEN_PREFIX: ${{ inputs.TOKEN_PREFIX }}
+        TOKEN_SUFFIX: ${{ inputs.TOKEN_SUFFIX }}
+        FILES: ${{ inputs.FILES }}
+      run: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        start_ts=$(date +%s)
+
+        # Habilita globbing avançado
+        shopt -s globstar nullglob dotglob
+
+        # Cores e estilos
+        c_reset="\e[0m"
+        c_bold="\e[1m"
+        c_dim="\e[2m"
+        c_green="\e[32m"
+        c_yellow="\e[33m"
+        c_red="\e[31m"
+        c_cyan="\e[36m"
+        c_magenta="\e[35m"
+        c_gray="\e[90m"
+
+        prefix="$TOKEN_PREFIX"
+        suffix="$TOKEN_SUFFIX"
+
+        declare -A missing_tokens=()
+        total_found=0
+        total_substituted=0
+
+        # Escapa prefixo/sufixo para regex (grep -P)
+        prefix_esc=$(printf '%s' "$prefix" | sed 's/[]\/$*.^|[]/\\&/g')
+        suffix_esc=$(printf '%s' "$suffix" | sed 's/[]\/$*.^|[]/\\&/g')
+        token_extract_regex="${prefix_esc}\K[^${suffix:0:1}]+(?=${suffix_esc})"
+
+        hr() { printf '%b' "${c_gray}------------------------------------------------------------${c_reset}\n"; }
+
+        header() {
+          hr
+          printf "%bReplace Tokens%b  prefix=%s  suffix=%s\n" "${c_bold}${c_cyan}" "${c_reset}" "$prefix" "$suffix"
+          hr
+        }
+
+        header
+
+        replace_in_file() {
+          local file="$1"
+          echo -e "${c_magenta}>>> Processando:${c_reset} $file"
+
+          local tokens
+          tokens=$(grep -oP "$token_extract_regex" "$file" | sort -u || true)
+
+          if [ -z "$tokens" ]; then
+            echo -e "    ${c_dim}(Nenhum token encontrado)${c_reset}"
+            return
+          fi
+
+          local file_found=0
+          local file_substituted=0
+
+          echo "::group::Tokens em $file"
+          for token in $tokens; do
+            file_found=$((file_found+1))
+            total_found=$((total_found+1))
+            if printenv "$token" >/dev/null 2>&1; then
+              value="${!token}"
+              safe_value=$(printf '%s' "$value" | sed -e 's/[\/&]/\\&/g')
+              sed -i "s|${prefix}${token}${suffix}|${safe_value}|g" "$file"
+              echo -e "  ${c_green}✓${c_reset} ${token}='${value}'"
+              file_substituted=$((file_substituted+1))
+              total_substituted=$((total_substituted+1))
+            else
+              if [[ -z "${missing_tokens[$token]+x}" ]]; then
+                missing_tokens[$token]=1
+                echo "::warning file=$file::Token '$token' não definida no ambiente"
+                echo -e "  ${c_yellow}!${c_reset} ${token} (ausente)"
+              fi
+            fi
+          done
+          echo "::endgroup::"
+
+        local file_missing=$((file_found-file_substituted))
+        local color_missing="$c_green"
+        [ "$file_missing" -gt 0 ] && color_missing="$c_red"
+        echo -e "    ${c_dim}Resumo arquivo:${c_reset} tokens=${file_found} substituídos=${c_green}${file_substituted}${c_reset} ausentes=${color_missing}${file_missing}${c_reset}"
+        hr
+        }
+
+        echo -e "${c_bold}Padrões recebidos:${c_reset} $FILES"
+        files=()
+
+        for pattern in $FILES; do
+          matched=false
+          for f in $pattern; do
+            if [ -f "$f" ]; then
+              files+=("$f")
+              matched=true
+            fi
+          done
+          if ! $matched; then
+            echo -e "  ${c_dim}(Pattern sem correspondência):${c_reset} $pattern"
+          fi
+        done
+
+        if [ "${#files[@]}" -eq 0 ]; then
+          echo -e "${c_yellow}Nenhum arquivo encontrado. Nada a fazer.${c_reset}"
+          exit 0
+        fi
+
+        echo -e "${c_bold}Arquivos a processar:${c_reset}"
+        for f in "${files[@]}"; do
+          echo " - $f"
+        done
+        hr
+
+        for f in "${files[@]}"; do
+          replace_in_file "$f"
+        done
+
+        absent=$((total_found - total_substituted))
+        end_ts=$(date +%s)
+        elapsed=$((end_ts - start_ts))
+
+        # Define cor do número de ausentes (vermelho se > 0, verde se 0)
+        if [ "$absent" -gt 0 ]; then
+          color_absent="$c_red"
+        else
+          color_absent="$c_green"
+        fi
+
+        echo "::group::Resumo Geral"
+        echo -e "${c_bold}================ RESULTADO FINAL ================${c_reset}"
+        printf "  %-22s %s\n" "Tokens encontrados:" "${total_found}"
+        printf "  %-22s %b%s%b\n" "Tokens substituídos:" "${c_green}" "${total_substituted}" "${c_reset}"
+        printf "  %-22s %b%s%b\n" "Tokens ausentes:" "${color_absent}" "${absent}" "${c_reset}"
+        printf "  %-22s %ss\n" "Tempo total:" "${elapsed}"
+        if [ "${#missing_tokens[@]}" -gt 0 ]; then
+          echo
+          echo "  Tokens ausentes:"
+          for t in "${!missing_tokens[@]}"; do
+            echo "    - $t"
+          done
+        fi
+        echo -e "${c_bold}================================================${c_reset}"
+        echo "::endgroup::"
+
+        if [ "${#missing_tokens[@]}" -gt 0 ]; then
+          echo -e "${c_red}Falha: existem tokens não resolvidos.${c_reset}"
+          echo "::error title=📝 TOKENS AUSENTES::Existem tokens não resolvidos nos arquivos processados."
+          exit 1
+        else
+          echo -e "${c_green}Sucesso: todos os tokens foram substituídos.${c_reset}"
+          echo "::notice title=📝 TOKENS SUBSTITUÍDOS::Todos os tokens foram substituídos com sucesso nos arquivos processados."
+        fi
+      shell: bash
