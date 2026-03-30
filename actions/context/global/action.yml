@@ -14,7 +14,7 @@ runs:
         GLOBAL_REPO_NAME=$(basename "$GLOBAL_GITHUB_ORG_REPO")
         GLOBAL_BUILD_ID=${{ github.run_id }}
         GLOBAL_TEMP_DIR=${{ runner.temp }}
-        GLOBAL_REPO_VAR=SA_Variables_Global
+        GLOBAL_REPO_VAR=${{ env.GLOBAL_REPO_VAR }}
         GLOBAL_CURRENT_BRANCH="${{ github.ref_name }}"
         GLOBAL_OWNER_NAME="${{ github.repository_owner }}"
         GLOBAL_RUN_DATE=$(TZ='America/Sao_Paulo' date +%d/%m/%Y)
