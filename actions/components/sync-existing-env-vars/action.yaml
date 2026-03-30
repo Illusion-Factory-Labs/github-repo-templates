@@ -31,13 +31,6 @@ inputs:
       que significa sincronizar todas as variáveis de origem.
     required: false
     default: '[]'
-  DEL_ENV:
-    description: >-
-      Flag para indicar se o ambiente de destino criado deve ser excluído. Use 'true' para excluir, ou 'false' para 
-      manter o ambiente. Por padrão, depois da exportacão das variáveis para o GITHUB_ENV, o ambiente de destino será 
-      excluido.
-    required: false
-    default: 'true'
 
 outputs:
   changed_variables_json:
@@ -55,7 +48,7 @@ runs:
     run: |
       set -euo pipefail
 
-      # Read action inputs.
+      # Definir constantes a partir do inputs da ação.
       DRY_RUN_RAW="${{ inputs.DRY_RUN }}"
       SRC_ENV="${{ inputs.SRC_ENV }}"
       DEST_ENV="${{ inputs.DEST_ENV }}"
@@ -63,31 +56,34 @@ runs:
       SRC_VARS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$SRC_ENV/variables"
       DEST_VARS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables"
 
+      # Validar o valor de DRY_RUN_RAW.
       if [[ "$DRY_RUN_RAW" != "true" && "$DRY_RUN_RAW" != "false" ]]; then
         echo "❌ Valor 'dry_run' inválido: '$DRY_RUN_RAW'. Use 'true' ou 'false'."
         exit 1
       fi
 
+      # Informar o modo de execução (dry-run ou real).
       if [[ "$DRY_RUN_RAW" == "true" ]]; then
         echo -e "ℹ️ 'dry_run' habilitado. Nenhuma variável será criada ou modificada.\n"
       fi
 
-      # Fetch all variables from the source environment.
+      # Buscar e analisar as variáveis de ambiente de origem.
       response="$(gh api "$SRC_VARS_API_ENDPOINT")"
-      # Fail fast if GitHub API response is not valid JSON.
+
+      # Validar e falhar rapidamente se a resposta da API do GitHub não for um JSON válido.
       if ! jq -e . >/dev/null 2>&1 <<< "$response"; then
         echo "❌ Falha ao analisar a resposta das variáveis de origem como JSON."
         echo "$response"
         exit 1
       fi
 
-      # Build an in-memory map: SOURCE_VARS[name]=value.
+      # Construir um mapa em memória: SOURCE_VARS[name]=value.
       declare -A SOURCE_VARS=()
       while IFS=$'\t' read -r name value; do
         SOURCE_VARS["$name"]="$value"
       done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$response")
 
-      # Fetch and parse destination environment variables.
+      # Buscar e analisar as variáveis de ambiente de destino.
       dest_list_response="$(gh api "$DEST_VARS_API_ENDPOINT")"
       if ! jq -e . >/dev/null 2>&1 <<< "$dest_list_response"; then
         echo "❌ Falha ao analisar a resposta das variáveis de destino como JSON."
@@ -100,8 +96,8 @@ runs:
         DEST_VARS["$name"]="$value"
       done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$dest_list_response")
 
-      # Resolve which variable names should be synced.
-      # Supported formats: empty/[] (all), JSON array, or comma-separated list.
+      # Resolver quais nomes de variáveis devem ser sincronizados.
+      # Formatos suportados: vazio/[] (todos), array JSON ou lista separada por vírgulas.
       declare -a NAMES_TO_COPY=()
       declare -a CREATED_VARS=()
       declare -a UPDATED_VARS=()
@@ -125,18 +121,18 @@ runs:
         done < <(tr ',' '\n' <<< "$VARS_TO_SYNC")
       fi
 
-      # Delete destination variables that should no longer exist.
-      # - Full sync mode (variables empty/[]): delete any destination-only variable.
-      # - Subset mode: delete only selected names that are missing in source.
+      # Deletar variáveis de destino que não devem mais existir.
+      # - Modo de sincronização completa (variáveis vazias/[]): deletar qualquer variável presente apenas no destino.
+      # - Modo de subconjunto: deletar apenas os nomes selecionados que estão ausentes na origem.
       if [[ "$COPY_ALL" == "1" ]]; then
         for name in "${!DEST_VARS[@]}"; do
           if [[ -z "${SOURCE_VARS[$name]+x}" ]]; then
             if [[ "$DRY_RUN_RAW" == "true" ]]; then
-              echo "[DRY_RUN] A variável '$name' seria deletada de '$DEST_ENV' (ausente na origem '$SRC_ENV')."
+              echo "[DRY_RUN] A variável '$name' seria apagada de '$DEST_ENV' (ausente na origem '$SRC_ENV')."
             else
-              echo "ℹ️ Deletando a variável '$name' de '$DEST_ENV' (ausente na origem '$SRC_ENV')."
+              echo "ℹ️ Apagando a variável '$name' de '$DEST_ENV' (ausente no ambiente original '$SRC_ENV')."
               gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name"
-              echo "✅ Deletado '$name' de '$DEST_ENV'."
+              echo -e "✅ Variável '$name' apagada de '$DEST_ENV' com sucesso!\n"
             fi
           fi
         done
@@ -144,33 +140,21 @@ runs:
         for name in "${NAMES_TO_COPY[@]}"; do
           if [[ -n "${DEST_VARS[$name]+x}" && -z "${SOURCE_VARS[$name]+x}" ]]; then
             if [[ "$DRY_RUN_RAW" == "true" ]]; then
-              echo "[DRY_RUN] A variável '$name' seria deletada de '$DEST_ENV' (selecionada mas ausente na origem '$SRC_ENV')."
+              echo "[DRY_RUN] A variável '$name' seria apagada de '$DEST_ENV' (selecionada mas ausente na origem '$SRC_ENV')."
             else
-              echo "ℹ️ Deletando a variável '$name' de '$DEST_ENV' (selecionada mas ausente na origem '$SRC_ENV')."
+              echo "ℹ️ Apagando a variável '$name' de '$DEST_ENV' (selecionada mas ausente no ambiente original '$SRC_ENV')."
               gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name"
-              echo "✅ Deletado '$name' de '$DEST_ENV'."
+              echo -e "✅ Variável '$name' apagada de '$DEST_ENV' com sucesso!\n"
             fi
           fi
         done
       fi
 
-      export_to_github_env() {
-        local var_name="$1"
-        local var_value="$2"
-        local delimiter
-        delimiter="__GITHUB_ENV_DELIM_${RANDOM}_$(date +%s)__"
-        {
-          echo "$var_name<<$delimiter"
-          echo "$var_value"
-          echo "$delimiter"
-        } >> "$GITHUB_ENV"
-      }
-
-      # Sync each selected variable from source to destination.
-      # If destination exists and value differs, update it.
+      # Sincronizar cada variável selecionada da origem para o destino.
+      # Se o destino existir e o valor for diferente, atualize-o. Caso contrário, crie-o.
       for name in "${NAMES_TO_COPY[@]}"; do
         if [[ -z "${SOURCE_VARS[$name]+x}" ]]; then
-          echo "⚠️ '$name' não existe no ambiente de origem '$SRC_ENV'. Pulando."
+          echo "⚠️ A variável '$name' não existe no ambiente de origem '$SRC_ENV'. Nada a fazer."
           continue
         fi
 
@@ -179,15 +163,14 @@ runs:
           dest_value="$(jq -r '.value // empty' <<< "$dest_response")"
 
           if [[ "$dest_value" == "$value" ]]; then
-            echo "⚠️ A variável '$name' já existe em '$DEST_ENV' com o mesmo valor. Pulando atualização."
+            echo "⚠️ A variável '$name' já existe em '$DEST_ENV' com o mesmo valor. Nada a fazer."
           elif [[ "$DRY_RUN_RAW" == "true" ]]; then
                 echo "[DRY_RUN] A variável '$name' seria atualizada em '$DEST_ENV' (valor difere da origem '$SRC_ENV')."
           else
             echo "ℹ️ Atualizando a variável '$name' em '$DEST_ENV' (valor difere da origem '$SRC_ENV')."
             gh api --silent --method PATCH -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT/$name" -f name="$name" -f value="$value"
             UPDATED_VARS+=("$name")
-            export_to_github_env "$name" "$value"
-            echo "✅ Atualizado a variável '$name' e exportado para GITHUB_ENV."
+            echo "✅ Variável '$name' atualizada em '$DEST_ENV' com sucesso."
           fi
         else
           if [[ "$DRY_RUN_RAW" == "true" ]]; then
@@ -196,8 +179,7 @@ runs:
             echo "ℹ️ Criando a variável '$name' de '$SRC_ENV' para '$DEST_ENV'."
             gh api --silent --method POST -H 'Accept: application/vnd.github+json' "$DEST_VARS_API_ENDPOINT" -f name="$name" -f value="$value"
             CREATED_VARS+=("$name")
-            export_to_github_env "$name" "$value"
-            echo "✅ Criado a variável '$name' e exportado para GITHUB_ENV."
+            echo "✅ Variável '$name' criada em '$DEST_ENV' com sucesso."
           fi
         fi
       done
@@ -254,4 +236,4 @@ runs:
         echo "✅ Exportado a variável '$name' de '$DEST_ENV' para GITHUB_ENV."
       done < <(jq -r '(.variables // [])[] | [.name, .value] | @tsv' <<< "$dest_list_response")
 
-      echo -e "\n✅  processo de exportação das variáveis de '$DEST_ENV' para GITHUB_ENV foi concluído.\n"
+      echo -e "\n✅ Processo de exportação das variáveis de '$DEST_ENV' para GITHUB_ENV foi concluído.\n"
