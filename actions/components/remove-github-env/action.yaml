@@ -4,6 +4,14 @@ description: >-
   associadas a ele.
 
 inputs:
+  DRY_RUN_ENV:
+    description: 'Se definido como "true", a ação simulará a exclusão dos ambientes, listando quais ambientes seriam excluídos sem realmente removê-los.'
+    required: false
+    type: choice
+    default: 'true'
+    options:
+      - 'true'
+      - 'false'
   REPOSITORY:
     description: "O repositório GitHub no formato 'owner/repo'. Padrão é o repositório atual."
     required: false
@@ -25,8 +33,18 @@ runs:
     run: |
       set -euo pipefail
 
+      DRY_RUN_RAW="${{ inputs.DRY_RUN_ENV }}"
       ENVS_TO_EXCLUDE='${{ inputs.ENVS_TO_EXCLUDE }}'
       ENVIRONMENTS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments"
+
+      if [[ "$DRY_RUN_RAW" != "true" && "$DRY_RUN_RAW" != "false" ]]; then
+        echo "❌ Valor 'dry_run' inválido: '$DRY_RUN_RAW'. Use 'true' ou 'false'."
+        exit 1
+      fi
+
+      if [[ "$DRY_RUN_RAW" == "true" ]]; then
+        echo -e "ℹ️ 'dry_run' habilitado. Nenhum ambiente será excluído.\n"
+      fi
 
       declare -a ENV_NAMES=()
       if [[ -z "$ENVS_TO_EXCLUDE" || "$ENVS_TO_EXCLUDE" == "[]" ]]; then
@@ -59,13 +77,17 @@ runs:
           continue
         fi
 
-        echo "ℹ️ Excluindo ambiente '$DEST_ENV'..."
-        if ! gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"; then
-          echo "❌ Falha ao excluir o ambiente '$DEST_ENV'."
-          echo "Verifique se o token GitHub App tem permissão de repositório 'Administration: write', exigida pela API de exclusão de environments."
-          exit 1
-        fi
+        if [[ "$DRY_RUN_RAW" == "true" ]]; then
+          echo "[DRY_RUN] O ambiente '$DEST_ENV' seria excluído do repositório '${{ inputs.REPOSITORY }}'."
+        else
+          echo "ℹ️ Excluindo ambiente '$DEST_ENV'..."
+          if ! gh api --silent --method DELETE -H 'Accept: application/vnd.github+json' "$DEST_ENV_API_ENDPOINT"; then
+            echo "❌ Falha ao excluir o ambiente '$DEST_ENV'."
+            echo "Verifique se o token GitHub App tem permissão de repositório 'Administration: write', exigida pela API de exclusão de environments."
+            exit 1
+          fi
 
-        echo -e "✅ Ambiente '$DEST_ENV' excluído com sucesso.\n"
+          echo -e "✅ Ambiente '$DEST_ENV' excluído com sucesso.\n"
+        fi
       done
       
