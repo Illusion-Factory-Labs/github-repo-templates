@@ -5,7 +5,7 @@ runs:
   using: "composite"
   steps:
     - name: Importar Variáveis Globais
-      uses: caixasuperapp/Templates_CI_CD/actions/context/global@main
+      uses: Illusion-Factory-Labs/github-repo-templates/actions/context/global@main
 
     - name: Exportar Variáveis de Ambiente do Projeto
       run: |

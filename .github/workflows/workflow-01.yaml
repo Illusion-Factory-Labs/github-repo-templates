@@ -95,15 +95,15 @@ jobs:
       BRANCH_STABLE: ${{ steps.guardrail.outputs.BRANCH_STABLE }}
     steps:
       - name: Api Dotnet Variables
-        uses: caixasuperapp/Templates_CI_CD/actions/context/dotnet-api@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/context/dotnet-api@main
       - name: GCM Checks - Tag
-        uses: caixasuperapp/Templates_CI_CD/actions/gcm/verify-tag@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/gcm/verify-tag@main
       - name: GCM Checks - Branch
         if: always()
-        uses: caixasuperapp/Templates_CI_CD/actions/gcm/verify-branch@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/gcm/verify-branch@main
       - name: Guardrail
         id: guardrail
-        uses: caixasuperapp/Templates_CI_CD/actions/guardrail/branch@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/guardrail/branch@main
 
   Vars-Verify:
     needs: Gcm-Verify
@@ -115,13 +115,13 @@ jobs:
     environment: ${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || (matrix.AMBIENTE == 'tqs' &&  'tqs-vars' || matrix.AMBIENTE) }}
     steps:
       - name: "Api Dotnet Variables"
-        uses: caixasuperapp/Templates_CI_CD/actions/context/dotnet-api@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/context/dotnet-api@main
       - name: "Token Create"
-        uses: caixasuperapp/Templates_CI_CD/actions/auth/githubapp@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/auth/githubapp@main
 
       - name: "Copy GitHub repo environment vars for approval skip (if prd or tqs)"
         if: ${{ matrix.AMBIENTE == 'prd' || matrix.AMBIENTE == 'tqs' }}
-        uses: caixasuperapp/Templates_CI_CD/actions/components/sync-repo-env-vars@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/components/sync-repo-env-vars@main
         with:
           dry_run: ${{ inputs.DRY_RUN }}
           variables: ${{ inputs.VARIABLES_TO_SYNC }}
@@ -130,19 +130,19 @@ jobs:
 
       - name: "File Variable Groups '${{ matrix.AMBIENTE }}'"
         id: file-variable-group
-        uses: caixasuperapp/Templates_CI_CD/actions/components/file-variable-group@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/components/file-variable-group@main
       - name: "Load Variable Groups '${{ matrix.AMBIENTE }}'"
-        uses: caixasuperapp/Templates_CI_CD/actions/components/load-variable-group@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/components/load-variable-group@main
         with:
           VARS_FILE: ${{ steps.file-variable-group.outputs.VARS_FILE }}
           VARS_CONTEXT: ${{ toJson(vars) }}
       - name: "Create Configmap"
-        uses: caixasuperapp/Templates_CI_CD/actions/components/create-configmap-dotnet@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/components/create-configmap-dotnet@main
       - name: "Replace Variable Group '${{ matrix.AMBIENTE }}'"
-        uses: caixasuperapp/Templates_CI_CD/actions/components/replace-tokens@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/components/replace-tokens@main
         with:
           FILES: "./**/k8s/*.yaml"
           TOKEN_PREFIX: "#{"
           TOKEN_SUFFIX: "}#"
       - name: "Verificar PathBase esperado pelo deploy no AKS"
-        uses: caixasuperapp/Templates_CI_CD/actions/quality/code-check-dotnet@main
+        uses: Illusion-Factory-Labs/github-repo-templates/actions/quality/code-check-dotnet@main
