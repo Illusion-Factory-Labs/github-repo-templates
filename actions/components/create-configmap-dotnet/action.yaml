@@ -21,6 +21,13 @@ runs:
 
     - name: appsettings.json to configmap.json
       run: |
+        APPSETTINGS_FILE="api/appsettings.json"
+
+        if [[ ! -f "$APPSETTINGS_FILE" ]]; then
+          echo "Arquivo não encontrado: $APPSETTINGS_FILE" >&2
+          exit 1
+        fi
+
         jq '
           def pathString:
             map(
@@ -45,13 +52,20 @@ runs:
               end;
 
           walk_paths([])
-        ' "api/${{ env.GLOBAL_REPO_NAME }}/appsettings.json" \
+        ' "$APPSETTINGS_FILE" \
         | sed -E 's/"#\{([A-Za-z0-9]+)\}#"/#{\1}#/g' \
         | sed -E 's/\\"#\{/#{/g' | sed -E 's/\}#\\"/}#/g' > "api/k8s/configmap.json"
       shell: bash
 
     - name: Export configmap.json content to environment variable (catalog)
       run: |
+        APPSETTINGS_FILE="api/appsettings.json"
+
+        if [[ ! -f "$APPSETTINGS_FILE" ]]; then
+          echo "Arquivo não encontrado: $APPSETTINGS_FILE" >&2
+          exit 1
+        fi
+
         # Processa o appsettings.json original (válido) e gera o formato flat
         CONFIGMAP_CONTENT=$(jq -r '
           def pathString:
@@ -79,7 +93,7 @@ runs:
               end;
 
           walk_paths([]) | join(",\n")
-        ' "api/${{ env.GLOBAL_REPO_NAME }}/appsettings.json")
+        ' "$APPSETTINGS_FILE")
         
         echo "CONFIGMAP<<EOF" >> $GITHUB_ENV
         echo "$CONFIGMAP_CONTENT" >> $GITHUB_ENV
