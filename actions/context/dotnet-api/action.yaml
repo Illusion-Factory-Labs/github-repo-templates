@@ -1,6 +1,11 @@
 name: Project Api Dotnet Variables
 description: "Exporta variáveis de ambiente para projetos API .NET"
 
+inputs:
+  AMBIENTE:
+    description: "Nome do ambiente da execução (ex.: des, qa, tqs, prd)."
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -18,13 +23,13 @@ runs:
         echo "  - BUILD_VERSION: $BUILD_VERSION"
         echo "  - DOTNET_VERSION: $DOTNET_VERSION"
         echo "  - ADV_SEC_LANG: $ADV_SEC_LANG"
-        echo "  - AMBIENTE: ${{ matrix.AMBIENTE }}"
+        echo "  - AMBIENTE: ${{ inputs.AMBIENTE }}"
         echo "  - CATALOG_TYPE: $CATALOG_TYPE"
 
         echo "BUILD_VERSION=$BUILD_VERSION" >> "$GITHUB_ENV"
         echo "DOTNET_VERSION=$DOTNET_VERSION" >> "$GITHUB_ENV"
         echo "ADV_SEC_LANG=$ADV_SEC_LANG" >> "$GITHUB_ENV"
-        echo "AMBIENTE=${{ matrix.AMBIENTE }}" >> "$GITHUB_ENV"
+        echo "AMBIENTE=${{ inputs.AMBIENTE }}" >> "$GITHUB_ENV"
         echo "CATALOG_TYPE=$CATALOG_TYPE" >> "$GITHUB_ENV"
 
         echo "✅ ===== [VARIÁVEIS DE PROJETO] Variáveis exportadas com sucesso para o ambiente. ====="
