@@ -33,10 +33,6 @@ runs:
 
         export_vars '${{ inputs.VARS_FILE }}' "git files"
         export_vars '${{ inputs.VARS_CONTEXT }}' "contexto"
-
-        if [[ -n "${{ inputs.VARS_TEMP_ENV }}" && "${{ inputs.VARS_TEMP_ENV }}" != "{}" ]]; then
-          export_vars '${{ inputs.VARS_TEMP_ENV }}' "ambiente temporário"
-        else
-          echo "::warning title=📝 VARIÁVEIS DE AMBIENTE TEMPORÁRIO NÃO ENCONTRADAS::Nenhuma variável de ambiente temporário encontrada para carregar."
-        fi
+        export_vars '${{ inputs.VARS_TEMP_ENV }}' "ambiente temporário"
+        
       shell: bash
