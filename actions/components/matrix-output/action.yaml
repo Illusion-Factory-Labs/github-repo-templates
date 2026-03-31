@@ -5,6 +5,7 @@ runs:
   using: "composite"
   steps:
     - name: Gerar output de jobs matriz
+      shell: bash
       run: |
         echo "{\"env-temp\":\"${{ matrix.AMBIENTE }}-temp\"}" > output-env-temp.json
     
