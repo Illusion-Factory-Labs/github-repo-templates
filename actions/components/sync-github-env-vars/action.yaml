@@ -23,7 +23,7 @@ inputs:
   DEST_ENV:
     description: "O nome do ambiente de destino do repositório GitHub para sincronizar variáveis."
     required: false
-    default: "${{ matrix.AMBIENTE == 'prd' && 'prd-vars' || matrix.AMBIENTE == 'tqs' && 'tqs-vars' }}"
+    default: "${{ matrix.AMBIENTE == 'prd' && 'prd-temp' || matrix.AMBIENTE == 'tqs' && 'tqs-temp' }}"
   VARS_TO_SYNC:
     description: >-
       Opcionalmente, uma lista de nomes de variáveis de origem para sincronizar. Formatos aceitos: array JSON 
