@@ -200,40 +200,40 @@ runs:
 
       echo -e "\n✅ Processo de sincronização das variáveis de ambiente concluído.\n"
 
-  - name: "Exportar as variáveis do ambiente de destino para GITHUB_ENV (para uso em passos posteriores do workflow)"
-    shell: bash
-    env:
-      GH_TOKEN: ${{ env.GHTOKEN }}
-    run: |
-      set -euo pipefail
+  # - name: "Exportar as variáveis do ambiente de destino para GITHUB_ENV (para uso em passos posteriores do workflow)"
+  #   shell: bash
+  #   env:
+  #     GH_TOKEN: ${{ env.GHTOKEN }}
+  #   run: |
+  #     set -euo pipefail
 
-      DEST_ENV="${{ inputs.DEST_ENV }}"
-      DEST_VARS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables"
+  #     DEST_ENV="${{ inputs.DEST_ENV }}"
+  #     DEST_VARS_API_ENDPOINT="repos/${{ inputs.REPOSITORY }}/environments/$DEST_ENV/variables"
 
-      # Buscar as variáveis de ambiente de destino novamente para garantir que o estado mais recente após a sincronização.
-      dest_list_response="$(gh api --method GET --paginate "$DEST_VARS_API_ENDPOINT" -f per_page=100)"
-      if ! jq -e . >/dev/null 2>&1 <<< "$dest_list_response"; then
-        echo "❌ Falha ao analisar a resposta das variáveis de destino como JSON."
-        echo "$dest_list_response"
-        exit 1
-      fi
+  #     # Buscar as variáveis de ambiente de destino novamente para garantir que o estado mais recente após a sincronização.
+  #     dest_list_response="$(gh api --method GET --paginate "$DEST_VARS_API_ENDPOINT" -f per_page=100)"
+  #     if ! jq -e . >/dev/null 2>&1 <<< "$dest_list_response"; then
+  #       echo "❌ Falha ao analisar a resposta das variáveis de destino como JSON."
+  #       echo "$dest_list_response"
+  #       exit 1
+  #     fi
 
-      # Exportar cada variável de destino para GITHUB_ENV para uso em passos posteriores do workflow.
-      while IFS=$'\t' read -r name value; do
-        export_to_github_env() {
-          local var_name="$1"
-          local var_value="$2"
-          local delimiter
-          delimiter="__GITHUB_ENV_DELIM_${RANDOM}_$(date +%s)__"
-          {
-            echo "$var_name<<$delimiter"
-            echo "$var_value"
-            echo "$delimiter"
-          } >> "$GITHUB_ENV"
-        }
+  #     # Exportar cada variável de destino para GITHUB_ENV para uso em passos posteriores do workflow.
+  #     while IFS=$'\t' read -r name value; do
+  #       export_to_github_env() {
+  #         local var_name="$1"
+  #         local var_value="$2"
+  #         local delimiter
+  #         delimiter="__GITHUB_ENV_DELIM_${RANDOM}_$(date +%s)__"
+  #         {
+  #           echo "$var_name<<$delimiter"
+  #           echo "$var_value"
+  #           echo "$delimiter"
+  #         } >> "$GITHUB_ENV"
+  #       }
 
-        export_to_github_env "$name" "$value"
-        echo "✅ Exportado a variável '$name' de '$DEST_ENV' para GITHUB_ENV."
-      done < <(jq -r -s '[.[].variables[]?] | .[] | [.name, .value] | @tsv' <<< "$dest_list_response")
+  #       export_to_github_env "$name" "$value"
+  #       echo "✅ Exportado a variável '$name' de '$DEST_ENV' para GITHUB_ENV."
+  #     done < <(jq -r -s '[.[].variables[]?] | .[] | [.name, .value] | @tsv' <<< "$dest_list_response")
 
-      echo -e "\n✅ Processo de exportação das variáveis de '$DEST_ENV' para GITHUB_ENV foi concluído.\n"
+  #     echo -e "\n✅ Processo de exportação das variáveis de '$DEST_ENV' para GITHUB_ENV foi concluído.\n"
