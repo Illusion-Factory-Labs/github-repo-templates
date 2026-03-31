@@ -6,7 +6,7 @@ runs:
   steps:
     - name: Gerar output de jobs matriz
       run: |
-      echo "{\"env-temp\":\"${{ matrix.AMBIENTE }}-temp\"}" > output-env-temp.json
+        echo "{\"env-temp\":\"${{ matrix.AMBIENTE }}-temp\"}" > output-env-temp.json
     
     - name: Upload output
       uses: actions/upload-artifact@v4
