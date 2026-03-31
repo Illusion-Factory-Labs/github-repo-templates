@@ -21,7 +21,7 @@ inputs:
       Lista de ambientes a serem excluídos. Formato: array JSON (ex. [\"prd-vars\", \"tqs-vars\"]) ou string separada por vírgulas 
       (ex. prd-vars,tqs-vars)."
     required: false
-    default: prd-vars,tqs-vars
+    default: ${{ matrix.AMBIENTE }}
 
 runs:
   using: "composite"
