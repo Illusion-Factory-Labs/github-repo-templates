@@ -8,6 +8,9 @@ inputs:
   VARS_CONTEXT:
     description: "Variáveis de ambiente para o contexto atual"
     required: true
+  VARS_TEMP_ENV:
+    description: "Variáveis de ambiente temporárias para o contexto atual"
+    required: true
 
 runs:
   using: "composite"
@@ -30,4 +33,5 @@ runs:
 
         export_vars '${{ inputs.VARS_FILE }}' "git files"
         export_vars '${{ inputs.VARS_CONTEXT }}' "contexto"
+        export_vars '${{ inputs.VARS_TEMP_ENV }}' "variáveis temporárias"
       shell: bash
