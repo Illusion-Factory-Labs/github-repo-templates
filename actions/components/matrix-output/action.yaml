@@ -1,11 +1,6 @@
 name: Gerar output de jobs matriz
 description: Gerar output de jobs matriz para exportar variáveis de ambiente dos ambientes temporários criados para importação de variáveis (prd-temp, tqs-temp)
 
-inputs:
-  YAML:
-    description: "YAML de variáveis a serem exportadas (chave: valor, onde valor pode usar sintaxe de expressão do GitHub Actions, ex: '${{ matrix.AMBIENTE }}-temp')"
-    required: true
-
 runs:
   using: "composite"
   steps:
