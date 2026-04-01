@@ -18,6 +18,9 @@ jobs:
               ["VAR_A"]="value_a"
               ["VAR_B"]="value_b"
             )
+
+            echo "changed_vars_json_array=$changed_vars_json_array" >> $GITHUB_OUTPUT
+            echo "chnged_vars_json_map=$(declare -p changed_vars_json_map)" >> $GITHUB_OUTPUT
         
     log:
         runs-on: ubuntu-latest
