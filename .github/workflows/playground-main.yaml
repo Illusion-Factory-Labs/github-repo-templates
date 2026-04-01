@@ -1,0 +1,30 @@
+name: Api Dotnet
+
+on:
+  push:
+    branches: [main]
+
+
+jobs:  
+    build:
+        runs-on: ubuntu-latest
+        outputs:
+          changed_vars_json_array: ${{ steps.set_changed_vars.outputs.changed_vars_json_array }}
+          chnged_vars_json_map: ${{ steps.set_changed_vars.outputs.changed_vars_json_map }}
+        steps:
+        - run: |
+            changed_vars_json_array='["VAR_A", "VAR_B"]'
+            declare -A changed_vars_json_map=(
+              ["VAR_A"]="value_a"
+              ["VAR_B"]="value_b"
+            )
+        
+    log:
+        runs-on: ubuntu-latest
+        needs: build
+        steps:
+        - run: |
+            echo "Changed Vars JSON Array: ${{ needs.build.outputs.changed_vars_json_array }}"
+            echo "Changed Vars JSON Map: ${{ needs.build.outputs.chnged_vars_json_map }}"
+
+
